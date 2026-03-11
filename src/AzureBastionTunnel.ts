@@ -96,13 +96,10 @@ class AzureBastionTunnel {
       // Prepare PowerShell script path
       const scriptPath = path.join(this.extensionPath, "bin", "Invoke-AZNetwork.ps1");
 
-      // Prepare arguments
-      const args = ["-SubscriptionId", subscriptionId, "-BastionName", bastionName, "-BastionResourceGroup", bastionResourceGroup, "-TargetVmResourceId", targetVmResourceId, "-RemotePort", remotePort.toString(), "-LocalPort", localPort.toString()];
-
       // Execute PowerShell script
-      const argsStr = args.join(" ");
-      const cmd = `powershell -NoProfile -ExecutionPolicy RemoteSigned -File "${scriptPath}" ${argsStr}`;
-      child_process.execSync(cmd, { stdio: "inherit" });
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()} -wait`;
+      this.channel.appendLine(`Command: ${cmd}`);
+      child_process.execSync(cmd);
     } catch (error) {
       this.channel.appendLine(`Command execution error: ${error}`);
       vscode.window.showErrorMessage(`Execution error: ${error}`);

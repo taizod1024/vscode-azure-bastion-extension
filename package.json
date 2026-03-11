@@ -61,6 +61,7 @@
         },
         "azure-bastion-tunnel.localPort": {
           "type": "integer",
+          "default": 60022,
           "description": "Local port to bind the tunnel to"
         }
       }
