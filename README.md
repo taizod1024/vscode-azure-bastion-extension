@@ -1,1 +1,1 @@
-# Azure Bastion SSH Extension
+# Azure Bastion Tunnel Extension

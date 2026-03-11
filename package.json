@@ -1,8 +1,8 @@
 {
   "version": "0.0.1",
-  "name": "azure-bastion-ssh",
-  "displayName": "Azure Bastion SSH Extension",
-  "description": "A VS Code extension for Azure Bastion SSH",
+  "name": "azure-bastion-tunnel",
+  "displayName": "Azure Bastion Tunnel Extension",
+  "description": "A VS Code extension for Azure Bastion Tunnel",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -22,19 +22,49 @@
   "contributes": {
     "commands": [
       {
-        "command": "azure-bastion-ssh.tunnelConnection",
-        "title": "Azure Bastion SSH - Tunnel Connection"
+        "command": "azure-bastion-tunnel.tunnelConnection",
+        "title": "Azure Bastion Tunnel - Tunnel Connection"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "azure-bastion-ssh.tunnelConnection",
+          "command": "azure-bastion-tunnel.tunnelConnection",
           "when": "true"
         }
       ]
     },
-    "keybindings": []
+    "keybindings": [],
+    "configuration": {
+      "title": "Azure Bastion Tunnel",
+      "properties": {
+        "azure-bastion-tunnel.subscriptionId": {
+          "type": "string",
+          "description": "Azure Subscription ID"
+        },
+        "azure-bastion-tunnel.bastionName": {
+          "type": "string",
+          "description": "Name of the Azure Bastion resource"
+        },
+        "azure-bastion-tunnel.bastionResourceGroup": {
+          "type": "string",
+          "description": "Resource group containing the Bastion resource"
+        },
+        "azure-bastion-tunnel.targetVmResourceId": {
+          "type": "string",
+          "description": "Resource ID of the target VM"
+        },
+        "azure-bastion-tunnel.remotePort": {
+          "type": "integer",
+          "default": 22,
+          "description": "Remote port on the target VM (default: 22 for SSH)"
+        },
+        "azure-bastion-tunnel.localPort": {
+          "type": "integer",
+          "description": "Local port to bind the tunnel to"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
@@ -75,7 +105,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/taizod1024/vscode-azure-bastion-ssh-extension.git"
+    "url": "https://github.com/taizod1024/vscode-azure-bastion-tunnel-extension.git"
   },
   "dependencies": {
     "child_process": "^1.0.2",
