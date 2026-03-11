@@ -1,7 +1,7 @@
 {
   "version": "0.0.1",
   "name": "azure-bastion-tunnel",
-  "displayName": "Azure Bastion Tunnel Extension",
+  "displayName": "Azure Bastion Tunnel Extension (Work In Progress)",
   "description": "A VS Code extension for Azure Bastion Tunnel",
   "engines": {
     "vscode": "^1.90.0"
