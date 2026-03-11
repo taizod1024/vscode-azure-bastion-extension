@@ -1,1 +1,1 @@
-# vscode-azure-bastion-ssh-extension
+# Azure Bastion SSH Extension
