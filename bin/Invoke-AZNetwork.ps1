@@ -20,8 +20,23 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Script started"
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Parameters:"
+# Helper functions
+function Get-Timestamp {
+    return Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+}
+
+function Write-Log {
+    param([string]$Message)
+    Write-Host "[$((Get-Timestamp))] $Message"
+}
+
+function Write-ErrorLog {
+    param([string]$Message)
+    Write-Host "[$((Get-Timestamp))] ERROR: $Message" -ForegroundColor Red
+}
+
+Write-Log "Script started"
+Write-Log "Parameters:"
 Write-Host "  - SubscriptionId: $SubscriptionId"
 Write-Host "  - BastionName: $BastionName"
 Write-Host "  - BastionResourceGroup: $BastionResourceGroup"
@@ -30,56 +45,56 @@ Write-Host "  - RemotePort: $RemotePort"
 Write-Host "  - LocalPort: $LocalPort"
 
 # Check if az command exists
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Checking if Azure CLI is installed..."
+Write-Log "Checking if Azure CLI is installed..."
 $azCommand = Get-Command az -ErrorAction SilentlyContinue
 if (-not $azCommand) {
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ERROR: Azure CLI (az) is not installed or not found in PATH" -ForegroundColor Red
-    pause
+    Write-ErrorLog "Azure CLI (az) is not installed or not found in PATH"
+    Read-Host "Press Enter to exit..."
     exit 1
 }
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Azure CLI found"
+Write-Log "Azure CLI found"
 
 # Check if az ssh extension is installed
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Checking Azure CLI ssh extension..."
+Write-Log "Checking Azure CLI ssh extension..."
 $extensions = az extension list --query "[?name=='ssh'].name" -o tsv 2>$null
 if ([string]::IsNullOrEmpty($extensions)) {
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ERROR: Azure CLI ssh extension is not installed" -ForegroundColor Red
+    Write-ErrorLog "Azure CLI ssh extension is not installed"
     Write-Host "Please install it with: az extension add --name ssh"
-    pause
+    Read-Host "Press Enter to exit..."
     exit 1
 }
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] SSH extension found"
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Azure CLI and ssh extension verified successfully"
+Write-Log "SSH extension found"
+Write-Log "Azure CLI and ssh extension verified successfully"
 
 # Login to Azure
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Logging in to Azure..."
+Write-Log "Logging in to Azure..."
 az login --output none
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ERROR: Failed to login to Azure (exit code: $LASTEXITCODE)" -ForegroundColor Red
-    pause
+    Write-ErrorLog "Failed to login to Azure (exit code: $LASTEXITCODE)"
+    Read-Host "Press Enter to exit..."
     exit 1
 }
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Azure login successful"
+Write-Log "Azure login successful"
 
 # Set subscription
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Setting subscription to $SubscriptionId..."
+Write-Log "Setting subscription to $SubscriptionId..."
 az account set --subscription $SubscriptionId
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ERROR: Failed to set subscription (exit code: $LASTEXITCODE)" -ForegroundColor Red
-    pause
+    Write-ErrorLog "Failed to set subscription (exit code: $LASTEXITCODE)"
+    Read-Host "Press Enter to exit..."
     exit 1
 }
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Subscription set successfully"
+Write-Log "Subscription set successfully"
 
 # Execute bastion tunnel command
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Creating tunnel to target VM..."
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')]   Bastion: $BastionName"
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')]   Resource Group: $BastionResourceGroup"
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')]   Target VM: $TargetVmResourceId"
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')]   Remote Port: $RemotePort"
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')]   Local Port: $LocalPort"
+Write-Log "Creating tunnel to target VM..."
+Write-Log "  Bastion: $BastionName"
+Write-Log "  Resource Group: $BastionResourceGroup"
+Write-Log "  Target VM: $TargetVmResourceId"
+Write-Log "  Remote Port: $RemotePort"
+Write-Log "  Local Port: $LocalPort"
 
 az network bastion tunnel `
     --name $BastionName `
@@ -89,10 +104,10 @@ az network bastion tunnel `
     --local-port $LocalPort
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ERROR: Failed to create bastion tunnel (exit code: $LASTEXITCODE)" -ForegroundColor Red
-    pause
+    Write-ErrorLog "Failed to create bastion tunnel (exit code: $LASTEXITCODE)"
+    Read-Host "Press Enter to exit..."
     exit 1
 }
 
-Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Tunnel created successfully"
-pause
+Write-Log "Tunnel created successfully"
+Read-Host "Press Enter to exit..."
