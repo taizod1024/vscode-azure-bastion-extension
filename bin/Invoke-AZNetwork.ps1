@@ -20,6 +20,9 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 
+# Set window title
+[System.Console]::Title = "Azure Bastion Tunnel"
+
 # Helper functions
 function Get-Timestamp {
     return Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
