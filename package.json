@@ -22,14 +22,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "azure-bastion.tunnelConnection",
+        "command": "azure-bastion.invokeAZNetWork",
         "title": "Azure Bastion - Tunnel Connection"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "azure-bastion.tunnelConnection",
+          "command": "azure-bastion.invokeAZNetWork",
           "when": "true"
         }
       ]

@@ -32,10 +32,10 @@ class AzureBastion {
 
     // init vscode
     context.subscriptions.push(
-      vscode.commands.registerCommand(`${this.appId}.tunnelConnection`, async () => {
+      vscode.commands.registerCommand(`${this.appId}.invokeAZNetWork`, async () => {
         this.channel.show(false);
         try {
-          await this.tunnelConnectionAsync();
+          await this.invokeAZNetWorkAsync();
         } catch (reason) {
           this.channel.appendLine(`ERROR: ${reason}`);
           vscode.window.showErrorMessage(`${reason}`);
@@ -45,7 +45,7 @@ class AzureBastion {
 
     // Create status bar button
     this.statusBarButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    this.statusBarButton.command = `${this.appId}.tunnelConnection`;
+    this.statusBarButton.command = `${this.appId}.invokeAZNetWork`;
     this.statusBarButton.text = "$(debug-disconnect) Azure Bastion";
     this.statusBarButton.tooltip = "Click to establish Azure Bastion";
     this.statusBarButton.show();
@@ -55,8 +55,8 @@ class AzureBastion {
   /** deactivate extension */
   public deactivate() {}
 
-  public async tunnelConnectionAsync() {
-    this.channel.appendLine("tunnelConnectionAsync: Starting tunnel connection");
+  public async invokeAZNetWorkAsync() {
+    this.channel.appendLine("invokeAZNetWorkAsync: Starting tunnel connection");
 
     // Check WINDIR environment variable
     if (!process.env.WINDIR) {
@@ -111,7 +111,7 @@ class AzureBastion {
       this.channel.appendLine(`Command execution error: ${error}`);
       vscode.window.showErrorMessage(`Execution error: ${error}`);
     }
-    this.channel.appendLine("tunnelConnectionAsync: Completed");
+    this.channel.appendLine("invokeAZNetWorkAsync: Completed");
   }
 }
 
