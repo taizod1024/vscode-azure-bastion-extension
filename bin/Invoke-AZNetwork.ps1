@@ -55,7 +55,8 @@ Write-Host "  - Mode: $Mode"
 if ($Mode -eq "tunnel") {
     Write-Host "  - RemotePort: $RemotePort"
     Write-Host "  - LocalPort: $LocalPort"
-} elseif ($Mode -eq "ssh") {
+}
+elseif ($Mode -eq "ssh") {
     Write-Host "  - Username: $Username"
 }
 
@@ -66,7 +67,8 @@ if ($Mode -eq "tunnel") {
         Read-Host "Press Enter to exit"
         exit 1
     }
-} elseif ($Mode -eq "ssh") {
+}
+elseif ($Mode -eq "ssh") {
     if (-not $Username) {
         Write-ErrorLog "SSH mode requires Username parameter"
         Read-Host "Press Enter to exit"
@@ -133,7 +135,8 @@ if ($Mode -eq "tunnel") {
     }
     
     Write-Log "Tunnel created successfully"
-} elseif ($Mode -eq "ssh") {
+}
+elseif ($Mode -eq "ssh") {
     # Execute Bastion SSH command
     Write-Log "Establishing SSH connection..."
     
