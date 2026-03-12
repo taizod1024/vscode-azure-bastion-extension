@@ -1,4 +1,4 @@
-# VS Code Azure Bastion Tunnel 拡張機能 - 開発ガイド
+# VS Code Azure Bastion 拡張機能 - 開発ガイド
 
 ## プロジェクト概要
 
@@ -20,7 +20,7 @@
 ## 主要ファイル
 
 - `src/extension.ts` - 拡張機能のメインエントリーポイント
-- `src/AzureBastionTunnel.ts` - トンネル機能の中核実装
+- `src/AzureBastion.ts` - トンネル機能の中核実装
 - `bin/Invoke-AZNetwork.ps1` - Azure Network実行用PowerShellスクリプト
 - `README.md` - ユーザー向けドキュメント
 

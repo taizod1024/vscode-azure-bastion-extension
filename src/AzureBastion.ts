@@ -2,13 +2,13 @@ import * as vscode from "vscode";
 import child_process from "child_process";
 import * as path from "path";
 
-/** Azure Bastion Tunnel Extension class */
-class AzureBastionTunnel {
+/** Azure Bastion Extension class */
+class AzureBastion {
   /** application id */
-  public appId = "azure-bastion-tunnel";
+  public appId = "azure-bastion";
 
   /** application name */
-  public appName = "Azure Bastion Tunnel Extension";
+  public appName = "Azure Bastion Extension";
 
   /** output channel */
   public channel: vscode.OutputChannel;
@@ -46,8 +46,8 @@ class AzureBastionTunnel {
     // Create status bar button
     this.statusBarButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     this.statusBarButton.command = `${this.appId}.tunnelConnection`;
-    this.statusBarButton.text = "$(debug-disconnect) Azure Bastion Tunnel";
-    this.statusBarButton.tooltip = "Click to establish Azure Bastion Tunnel";
+    this.statusBarButton.text = "$(debug-disconnect) Azure Bastion";
+    this.statusBarButton.tooltip = "Click to establish Azure Bastion";
     this.statusBarButton.show();
     context.subscriptions.push(this.statusBarButton);
   }
@@ -67,7 +67,7 @@ class AzureBastionTunnel {
     }
 
     // Get configuration
-    const config = vscode.workspace.getConfiguration("azure-bastion-tunnel");
+    const config = vscode.workspace.getConfiguration("azure-bastion");
     const subscriptionId = config.get<string>("subscriptionId");
     const bastionName = config.get<string>("bastionName");
     const bastionResourceGroup = config.get<string>("bastionResourceGroup");
@@ -88,7 +88,7 @@ class AzureBastionTunnel {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
       this.channel.appendLine(`ERROR: ${errorMsg}`);
       vscode.window.showErrorMessage(errorMsg);
-      await vscode.commands.executeCommand("workbench.action.openSettings", "azure-bastion-tunnel");
+      await vscode.commands.executeCommand("workbench.action.openSettings", "azure-bastion");
       return;
     }
 
@@ -115,4 +115,4 @@ class AzureBastionTunnel {
   }
 }
 
-export const azureBastionTunnel = new AzureBastionTunnel();
+export const azureBastion = new AzureBastion();

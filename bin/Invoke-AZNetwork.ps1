@@ -21,7 +21,7 @@ param(
 $ErrorActionPreference = "SilentlyContinue"
 
 # Set window title
-[System.Console]::Title = "Azure Bastion Tunnel"
+[System.Console]::Title = "Azure Bastion"
 
 # Helper functions
 function Get-Timestamp {
@@ -79,7 +79,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Log "Subscription set successfully"
 
-# Execute bastion tunnel command
+# Execute Bastion command
 Write-Log "Creating tunnel to target VM..."
 Write-Log "  Bastion: $BastionName"
 Write-Log "  Resource Group: $BastionResourceGroup"
@@ -87,7 +87,7 @@ Write-Log "  Target VM: $TargetVmResourceId"
 Write-Log "  Remote Port: $RemotePort"
 Write-Log "  Local Port: $LocalPort"
 
-az network bastion tunnel `
+az network Bastion `
     --name $BastionName `
     --resource-group $BastionResourceGroup `
     --target-resource-id $TargetVmResourceId `
@@ -95,7 +95,7 @@ az network bastion tunnel `
     --port $LocalPort
 
 if ($LASTEXITCODE -ne 0) {
-    Write-ErrorLog "Failed to create bastion tunnel (exit code: $LASTEXITCODE)"
+    Write-ErrorLog "Failed to create Bastion (exit code: $LASTEXITCODE)"
     Read-Host "Press Enter to exit"
     exit 1
 }
