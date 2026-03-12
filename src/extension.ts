@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
-import { azureBastionTunnel } from "./AzureBastionTunnel";
+import { azureBastion } from "./AzureBastion";
 
 export function activate(context: vscode.ExtensionContext) {
-  azureBastionTunnel.activate(context);
+  azureBastion.activate(context);
 }
 
 export function deactivate() {
-  azureBastionTunnel.deactivate();
+  azureBastion.deactivate();
 }

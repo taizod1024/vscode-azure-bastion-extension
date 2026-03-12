@@ -11,17 +11,24 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$TargetVmResourceId,
     
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $false)]
     [int]$RemotePort,
     
-    [Parameter(Mandatory = $true)]
-    [int]$LocalPort
+    [Parameter(Mandatory = $false)]
+    [int]$LocalPort,
+    
+    [Parameter(Mandatory = $false)]
+    [string]$Username,
+    
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("tunnel", "ssh")]
+    [string]$Mode = "tunnel"
 )
 
 $ErrorActionPreference = "SilentlyContinue"
 
 # Set window title
-[System.Console]::Title = "Azure Bastion Tunnel"
+[System.Console]::Title = "Azure Bastion"
 
 # Helper functions
 function Get-Timestamp {
@@ -44,8 +51,30 @@ Write-Host "  - SubscriptionId: $SubscriptionId"
 Write-Host "  - BastionName: $BastionName"
 Write-Host "  - BastionResourceGroup: $BastionResourceGroup"
 Write-Host "  - TargetVmResourceId: $TargetVmResourceId"
-Write-Host "  - RemotePort: $RemotePort"
-Write-Host "  - LocalPort: $LocalPort"
+Write-Host "  - Mode: $Mode"
+if ($Mode -eq "tunnel") {
+    Write-Host "  - RemotePort: $RemotePort"
+    Write-Host "  - LocalPort: $LocalPort"
+}
+elseif ($Mode -eq "ssh") {
+    Write-Host "  - Username: $Username"
+}
+
+# Validate mode-specific parameters
+if ($Mode -eq "tunnel") {
+    if (-not $RemotePort -or -not $LocalPort) {
+        Write-ErrorLog "Tunnel mode requires RemotePort and LocalPort parameters"
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+}
+elseif ($Mode -eq "ssh") {
+    if (-not $Username) {
+        Write-ErrorLog "SSH mode requires Username parameter"
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+}
 
 # Check if az command exists
 Write-Log "Checking if Azure CLI is installed..."
@@ -79,26 +108,51 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Log "Subscription set successfully"
 
-# Execute bastion tunnel command
-Write-Log "Creating tunnel to target VM..."
+# Execute Bastion command
+Write-Log "Establishing connection to target VM..."
 Write-Log "  Bastion: $BastionName"
 Write-Log "  Resource Group: $BastionResourceGroup"
 Write-Log "  Target VM: $TargetVmResourceId"
-Write-Log "  Remote Port: $RemotePort"
-Write-Log "  Local Port: $LocalPort"
+Write-Log "  Mode: $Mode"
 
-az network bastion tunnel `
-    --name $BastionName `
-    --resource-group $BastionResourceGroup `
-    --target-resource-id $TargetVmResourceId `
-    --resource-port $RemotePort `
-    --port $LocalPort
-
-if ($LASTEXITCODE -ne 0) {
-    Write-ErrorLog "Failed to create bastion tunnel (exit code: $LASTEXITCODE)"
-    Read-Host "Press Enter to exit"
-    exit 1
+if ($Mode -eq "tunnel") {
+    # Execute Bastion tunnel command
+    Write-Log "Creating tunnel connection..."
+    Write-Log "  Remote Port: $RemotePort"
+    Write-Log "  Local Port: $LocalPort"
+    
+    az network Bastion tunnel `
+        --name $BastionName `
+        --resource-group $BastionResourceGroup `
+        --target-resource-id $TargetVmResourceId `
+        --resource-port $RemotePort `
+        --port $LocalPort
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorLog "Failed to create Bastion tunnel (exit code: $LASTEXITCODE)"
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+    
+    Write-Log "Tunnel created successfully"
 }
-
-Write-Log "Tunnel created successfully"
+elseif ($Mode -eq "ssh") {
+    # Execute Bastion SSH command
+    Write-Log "Establishing SSH connection..."
+    
+    az network Bastion ssh `
+        --name $BastionName `
+        --resource-group $BastionResourceGroup `
+        --target-resource-id $TargetVmResourceId `
+        --username $Username `
+        --auth-type password
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorLog "Failed to establish SSH connection (exit code: $LASTEXITCODE)"
+        Read-Host "Press Enter to exit"
+        exit 1
+    }
+    
+    Write-Log "SSH connection closed"
+}
 Read-Host "Press Enter to exit"
