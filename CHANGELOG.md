@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.4](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.3...v0.0.4) (2026-03-12)
+
+
+### Features
+
+* add SSH support and improve tunnel connection handling ([c177a3d](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/c177a3d2ca93f95d497e3cb61ada1afa0eaf0fbe))
+
+
+### Bug Fixes
+
+* correct formatting for SSH mode handling in Invoke-AZNetwork.ps1 ([fbe00a7](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/fbe00a760ad97c5a0f6de06a6488550c54889db3))
+
 ### [0.0.3](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.2...v0.0.3) (2026-03-12)
 
 ### Features
