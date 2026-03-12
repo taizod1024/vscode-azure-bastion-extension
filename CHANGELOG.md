@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.3](https://github.com/taizod1024/vscode-azure-bastion-tunnel-extension/compare/v0.0.2...v0.0.3) (2026-03-12)
+
+
+### Features
+
+* set console title for Azure Bastion Tunnel script ([f9a4e11](https://github.com/taizod1024/vscode-azure-bastion-tunnel-extension/commit/f9a4e11651c4074a36970d24fad5e24879b21611))
+
 ### 0.0.2 (2026-03-12)
 
 
