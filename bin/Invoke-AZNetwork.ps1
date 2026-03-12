@@ -49,30 +49,18 @@ Write-Log "Checking if Azure CLI is installed..."
 $azCommand = Get-Command az -ErrorAction SilentlyContinue
 if (-not $azCommand) {
     Write-ErrorLog "Azure CLI (az) is not installed or not found in PATH"
-    Read-Host "Press Enter to exit..."
+    Read-Host "Press Enter to exit"
     exit 1
 }
 Write-Log "Azure CLI found"
 
-# Check if az ssh extension is installed
-Write-Log "Checking Azure CLI ssh extension..."
-$extensions = az extension list --query "[?name=='ssh'].name" -o tsv 2>$null
-if ([string]::IsNullOrEmpty($extensions)) {
-    Write-ErrorLog "Azure CLI ssh extension is not installed"
-    Write-Host "Please install it with: az extension add --name ssh"
-    Read-Host "Press Enter to exit..."
-    exit 1
-}
-Write-Log "SSH extension found"
-Write-Log "Azure CLI and ssh extension verified successfully"
-
 # Login to Azure
 Write-Log "Logging in to Azure..."
-az login --output none
+$null | az login --output none
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to login to Azure (exit code: $LASTEXITCODE)"
-    Read-Host "Press Enter to exit..."
+    Read-Host "Press Enter to exit"
     exit 1
 }
 Write-Log "Azure login successful"
@@ -83,7 +71,7 @@ az account set --subscription $SubscriptionId
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to set subscription (exit code: $LASTEXITCODE)"
-    Read-Host "Press Enter to exit..."
+    Read-Host "Press Enter to exit"
     exit 1
 }
 Write-Log "Subscription set successfully"
@@ -101,13 +89,13 @@ az network bastion tunnel `
     --resource-group $BastionResourceGroup `
     --target-resource-id $TargetVmResourceId `
     --resource-port $RemotePort `
-    --local-port $LocalPort
+    --port $LocalPort
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to create bastion tunnel (exit code: $LASTEXITCODE)"
-    Read-Host "Press Enter to exit..."
+    Read-Host "Press Enter to exit"
     exit 1
 }
 
 Write-Log "Tunnel created successfully"
-Read-Host "Press Enter to exit..."
+Read-Host "Press Enter to exit"

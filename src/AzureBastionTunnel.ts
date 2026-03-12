@@ -97,9 +97,16 @@ class AzureBastionTunnel {
       const scriptPath = path.join(this.extensionPath, "bin", "Invoke-AZNetwork.ps1");
 
       // Execute PowerShell script
-      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()} -wait`;
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()}`;
       this.channel.appendLine(`Command: ${cmd}`);
-      child_process.execSync(cmd);
+      child_process.exec(cmd, (error, _stdout, stderr) => {
+        if (error) {
+          this.channel.appendLine(`Command execution error: ${error}`);
+        }
+        if (stderr) {
+          this.channel.appendLine(`stderr: ${stderr}`);
+        }
+      });
     } catch (error) {
       this.channel.appendLine(`Command execution error: ${error}`);
       vscode.window.showErrorMessage(`Execution error: ${error}`);
