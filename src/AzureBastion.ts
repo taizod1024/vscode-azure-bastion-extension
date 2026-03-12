@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import child_process from "child_process";
+import { exec } from "child_process";
 import * as path from "path";
 
 /** Azure Bastion Extension class */
@@ -56,7 +56,45 @@ class AzureBastion {
   public deactivate() {}
 
   public async invokeAZNetWorkAsync() {
-    this.channel.appendLine("invokeAZNetWorkAsync: Starting tunnel connection");
+    this.channel.appendLine("invokeAZNetWorkAsync: Starting");
+
+    // Show QuickPick to select operation type
+    const selected = await vscode.window.showQuickPick(
+      [
+        { label: "$(debug-disconnect) Tunnel", description: "Establish tunnel connection", value: "tunnel" },
+        { label: "$(terminal) SSH", description: "Establish SSH connection", value: "ssh" },
+      ],
+      {
+        placeHolder: "Select operation type",
+        matchOnDescription: true,
+        ignoreFocusOut: true,
+        canPickMany: false,
+      },
+    );
+
+    if (!selected) {
+      this.channel.appendLine("User cancelled the operation");
+      return;
+    }
+
+    this.channel.appendLine(`Selected: ${selected.value}`);
+
+    try {
+      if (selected.value === "tunnel") {
+        await this.executeTunnel();
+      } else if (selected.value === "ssh") {
+        await this.executeSSH();
+      }
+    } catch (error) {
+      this.channel.appendLine(`Error: ${error}`);
+      vscode.window.showErrorMessage(`Error: ${error}`);
+    }
+
+    this.channel.appendLine("invokeAZNetWorkAsync: Completed");
+  }
+
+  private async executeTunnel() {
+    this.channel.appendLine("executeTunnel: Starting tunnel connection");
 
     // Check WINDIR environment variable
     if (!process.env.WINDIR) {
@@ -99,7 +137,7 @@ class AzureBastion {
       // Execute PowerShell script
       const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()}`;
       this.channel.appendLine(`Command: ${cmd}`);
-      child_process.exec(cmd, (error, _stdout, stderr) => {
+      exec(cmd, (error, _stdout, stderr) => {
         if (error) {
           this.channel.appendLine(`Command execution error: ${error}`);
         }
@@ -111,7 +149,64 @@ class AzureBastion {
       this.channel.appendLine(`Command execution error: ${error}`);
       vscode.window.showErrorMessage(`Execution error: ${error}`);
     }
-    this.channel.appendLine("invokeAZNetWorkAsync: Completed");
+    this.channel.appendLine("executeTunnel: Completed");
+  }
+
+  private async executeSSH() {
+    this.channel.appendLine("executeSSH: Starting SSH connection");
+
+    // Check WINDIR environment variable
+    if (!process.env.WINDIR) {
+      const errorMsg = "WINDIR environment variable is not set";
+      this.channel.appendLine(`ERROR: ${errorMsg}`);
+      vscode.window.showErrorMessage(errorMsg);
+      return;
+    }
+
+    // Get configuration
+    const config = vscode.workspace.getConfiguration("azure-bastion");
+    const subscriptionId = config.get<string>("subscriptionId");
+    const bastionName = config.get<string>("bastionName");
+    const bastionResourceGroup = config.get<string>("bastionResourceGroup");
+    const targetVmResourceId = config.get<string>("targetVmResourceId");
+    const username = config.get<string>("username");
+
+    // Validate required parameters
+    const missingParams: string[] = [];
+    if (!subscriptionId) missingParams.push("subscriptionId");
+    if (!bastionName) missingParams.push("bastionName");
+    if (!bastionResourceGroup) missingParams.push("bastionResourceGroup");
+    if (!targetVmResourceId) missingParams.push("targetVmResourceId");
+    if (!username) missingParams.push("username");
+
+    if (missingParams.length > 0) {
+      const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
+      this.channel.appendLine(`ERROR: ${errorMsg}`);
+      vscode.window.showErrorMessage(errorMsg);
+      await vscode.commands.executeCommand("workbench.action.openSettings", "azure-bastion");
+      return;
+    }
+
+    try {
+      // Prepare PowerShell script path
+      const scriptPath = path.join(this.extensionPath, "bin", "Invoke-AZNetwork.ps1");
+
+      // Execute PowerShell script with SSH parameter
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-Username',${username},'-Mode','ssh'`;
+      this.channel.appendLine(`Command: ${cmd}`);
+      exec(cmd, (error, _stdout, stderr) => {
+        if (error) {
+          this.channel.appendLine(`Command execution error: ${error}`);
+        }
+        if (stderr) {
+          this.channel.appendLine(`stderr: ${stderr}`);
+        }
+      });
+    } catch (error) {
+      this.channel.appendLine(`Command execution error: ${error}`);
+      vscode.window.showErrorMessage(`Execution error: ${error}`);
+    }
+    this.channel.appendLine("executeSSH: Completed");
   }
 }
 
