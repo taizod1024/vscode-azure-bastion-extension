@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.7](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.6...v0.0.7) (2026-03-13)
+
+
+### Features
+
+* add extensionKind to package.json for UI support ([3f9ba2d](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/3f9ba2d7c1b206117ab8835c3d6bd5a8045d20fe))
+
 ### [0.0.6](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.5...v0.0.6) (2026-03-13)
 
 
