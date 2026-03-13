@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.6](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.5...v0.0.6) (2026-03-13)
+
+
+### Features
+
+* support multiple target VMs and local ports in SSH connection ([6de8a5c](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/6de8a5c36945e9ef31700cdf0f362a4b5c89585a))
+
 ### [0.0.5](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.4...v0.0.5) (2026-03-13)
 
 
