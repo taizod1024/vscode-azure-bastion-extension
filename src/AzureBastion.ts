@@ -33,7 +33,6 @@ class AzureBastion {
     // init vscode
     context.subscriptions.push(
       vscode.commands.registerCommand(`${this.appId}.invokeAZNetWork`, async () => {
-        this.channel.show(false);
         try {
           await this.invokeAZNetWorkAsync();
         } catch (reason) {
@@ -63,11 +62,12 @@ class AzureBastion {
       [
         { label: "$(debug-disconnect) Tunnel", description: "Establish tunnel connection", value: "tunnel" },
         { label: "$(terminal) SSH", description: "Establish SSH connection", value: "ssh" },
+        { label: "$(gear) Settings", description: "Open extension settings", value: "settings" },
       ],
       {
         placeHolder: "Select operation type",
         matchOnDescription: true,
-        ignoreFocusOut: true,
+        ignoreFocusOut: false,
         canPickMany: false,
       },
     );
@@ -84,6 +84,8 @@ class AzureBastion {
         await this.executeTunnel();
       } else if (selected.value === "ssh") {
         await this.executeSSH();
+      } else if (selected.value === "settings") {
+        await vscode.commands.executeCommand("workbench.action.openSettings", "azure-bastion");
       }
     } catch (error) {
       this.channel.appendLine(`Error: ${error}`);
