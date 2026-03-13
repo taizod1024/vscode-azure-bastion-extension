@@ -51,8 +51,11 @@
           "description": "Resource group containing the Bastion resource"
         },
         "azure-bastion.targetVmResourceId": {
-          "type": "string",
-          "description": "Resource ID of the target VM"
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of Resource IDs of target VMs"
         },
         "azure-bastion.remotePort": {
           "type": "integer",
@@ -60,13 +63,18 @@
           "description": "Remote port on the target VM (default: 22 for SSH)"
         },
         "azure-bastion.localPort": {
-          "type": "integer",
-          "default": 60022,
-          "description": "Local port to bind the tunnel to"
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "List of local ports to bind the tunnel to"
         },
         "azure-bastion.username": {
-          "type": "string",
-          "description": "Username for SSH connection (required for SSH mode)"
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of usernames for SSH connection"
         }
       }
     }
