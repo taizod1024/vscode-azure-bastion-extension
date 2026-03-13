@@ -95,6 +95,10 @@ class AzureBastion {
     this.channel.appendLine("invokeAZNetWorkAsync: Completed");
   }
 
+  private getHostNameFromResourceId(resourceId: string): string {
+    return resourceId.split("/").pop() || resourceId;
+  }
+
   private async executeTunnel() {
     this.channel.appendLine("executeTunnel: Starting tunnel connection");
 
@@ -111,18 +115,18 @@ class AzureBastion {
     const subscriptionId = config.get<string>("subscriptionId");
     const bastionName = config.get<string>("bastionName");
     const bastionResourceGroup = config.get<string>("bastionResourceGroup");
-    const targetVmResourceId = config.get<string>("targetVmResourceId");
+    const targetVmResourceIds = config.get<string[]>("targetVmResourceId") || [];
     const remotePort = config.get<number>("remotePort");
-    const localPort = config.get<number>("localPort");
+    const localPorts = config.get<number[]>("localPort") || [];
 
     // Validate required parameters
     const missingParams: string[] = [];
     if (!subscriptionId) missingParams.push("subscriptionId");
     if (!bastionName) missingParams.push("bastionName");
     if (!bastionResourceGroup) missingParams.push("bastionResourceGroup");
-    if (!targetVmResourceId) missingParams.push("targetVmResourceId");
+    if (targetVmResourceIds.length === 0) missingParams.push("targetVmResourceId");
     if (!remotePort) missingParams.push("remotePort");
-    if (!localPort) missingParams.push("localPort");
+    if (localPorts.length === 0) missingParams.push("localPort");
 
     if (missingParams.length > 0) {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
@@ -131,6 +135,26 @@ class AzureBastion {
       await vscode.commands.executeCommand("workbench.action.openSettings", "azure-bastion");
       return;
     }
+
+    // Select VM Resource ID
+    const vmOptions = targetVmResourceIds.map((id, index) => ({
+      label: `localhost:${localPorts[index]} -> ${this.getHostNameFromResourceId(id)}:${remotePort}`,
+      value: index,
+    }));
+
+    const selectedVmIndex = await vscode.window.showQuickPick(vmOptions, {
+      placeHolder: "Select target VM",
+      ignoreFocusOut: false,
+    });
+
+    if (selectedVmIndex === undefined) {
+      this.channel.appendLine("User cancelled VM selection");
+      return;
+    }
+
+    // Use the local port corresponding to the selected VM index
+    const targetVmResourceId = targetVmResourceIds[selectedVmIndex.value];
+    const localPort = localPorts[selectedVmIndex.value];
 
     try {
       // Prepare PowerShell script path
@@ -170,16 +194,20 @@ class AzureBastion {
     const subscriptionId = config.get<string>("subscriptionId");
     const bastionName = config.get<string>("bastionName");
     const bastionResourceGroup = config.get<string>("bastionResourceGroup");
-    const targetVmResourceId = config.get<string>("targetVmResourceId");
-    const username = config.get<string>("username");
+    const targetVmResourceIds = config.get<string[]>("targetVmResourceId") || [];
+    const remotePort = config.get<number>("remotePort");
+    const localPorts = config.get<number[]>("localPort") || [];
+    const usernames = config.get<string[]>("username") || [];
 
     // Validate required parameters
     const missingParams: string[] = [];
     if (!subscriptionId) missingParams.push("subscriptionId");
     if (!bastionName) missingParams.push("bastionName");
     if (!bastionResourceGroup) missingParams.push("bastionResourceGroup");
-    if (!targetVmResourceId) missingParams.push("targetVmResourceId");
-    if (!username) missingParams.push("username");
+    if (targetVmResourceIds.length === 0) missingParams.push("targetVmResourceId");
+    if (!remotePort) missingParams.push("remotePort");
+    if (localPorts.length === 0) missingParams.push("localPort");
+    if (usernames.length === 0) missingParams.push("username");
 
     if (missingParams.length > 0) {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
@@ -188,6 +216,26 @@ class AzureBastion {
       await vscode.commands.executeCommand("workbench.action.openSettings", "azure-bastion");
       return;
     }
+
+    // Select VM Resource ID
+    const vmOptions = targetVmResourceIds.map((id, index) => ({
+      label: `localhost:${localPorts[index]} -> ${usernames[index]}@${this.getHostNameFromResourceId(id)}:${remotePort}`,
+      value: index,
+    }));
+
+    const selectedVmIndex = await vscode.window.showQuickPick(vmOptions, {
+      placeHolder: "Select target VM",
+      ignoreFocusOut: false,
+    });
+
+    if (selectedVmIndex === undefined) {
+      this.channel.appendLine("User cancelled VM selection");
+      return;
+    }
+
+    // Use the username corresponding to the selected VM index
+    const targetVmResourceId = targetVmResourceIds[selectedVmIndex.value];
+    const username = usernames[selectedVmIndex.value];
 
     try {
       // Prepare PowerShell script path
