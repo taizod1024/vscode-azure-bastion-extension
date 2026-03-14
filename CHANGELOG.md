@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.8](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.7...v0.0.8) (2026-03-14)
+
+
+### Features
+
+* **images:** add azure-bastion_1.png and azure-bastion_2.png ([c019449](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/c01944913cc8d1901c9d8d7c8a476f844e1c7e44))
+
 ### [0.0.7](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.6...v0.0.7) (2026-03-13)
 
 
