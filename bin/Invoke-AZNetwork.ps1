@@ -21,18 +21,25 @@ param(
     [string]$Username,
     
     [Parameter(Mandatory = $false)]
-    [ValidateSet("tunnel", "ssh")]
+    [ValidateSet("tunnel", "ssh", "rdp")]
     [string]$Mode = "tunnel"
 )
 
 $ErrorActionPreference = "SilentlyContinue"
 
+# Extract hostname from TargetVmResourceId
+$HostName = $TargetVmResourceId -split "/" | Select-Object -Last 1
+
 # Set window title
 if ($Mode -eq "tunnel") {
     [System.Console]::Title = "Azure Bastion Tunnel"
+    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
 }
 elseif ($Mode -eq "ssh") {
     [System.Console]::Title = "Azure Bastion SSH"
+}
+elseif ($Mode -eq "rdp") {
+    [System.Console]::Title = "Azure Bastion RDP"
 }
 
 # Helper functions
@@ -125,17 +132,11 @@ if ($LASTEXITCODE -ne 0) {
 Write-Log "Subscription set successfully"
 
 # Execute Bastion command
-Write-Log "Establishing connection to target VM..."
-Write-Log "  Bastion: $BastionName"
-Write-Log "  Resource Group: $BastionResourceGroup"
-Write-Log "  Target VM: $TargetVmResourceId"
-Write-Log "  Mode: $Mode"
-
 if ($Mode -eq "tunnel") {
     # Execute Bastion tunnel command
     Write-Log "Creating tunnel connection..."
-    Write-Log "  Remote Port: $RemotePort"
-    Write-Log "  Local Port: $LocalPort"
+
+    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
     
     az network Bastion tunnel `
         --name $BastionName `
@@ -172,4 +173,22 @@ elseif ($Mode -eq "ssh") {
     }
     
     Write-Log "SSH connection closed"
+}
+elseif ($Mode -eq "rdp") {
+    # Execute Bastion RDP command
+    Write-Log "Establishing RDP connection..."
+    
+    az network Bastion rdp `
+        --name $BastionName `
+        --resource-group $BastionResourceGroup `
+        --target-resource-id $TargetVmResourceId
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorLog "Failed to establish RDP connection (exit code: $LASTEXITCODE)"
+        Write-WarnLog "Press Enter to exit..."
+        Read-Host
+        exit 1
+    }
+    
+    Write-Log "RDP connection closed"
 }

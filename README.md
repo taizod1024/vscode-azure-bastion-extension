@@ -1,16 +1,19 @@
-# Azure Bastion Extension
+# Azure Bastion Extension - beta
 
 A VS Code extension for Azure Bastion
-
-## Features
-
-- Easily create SSH tunnels through Azure Bastion directly from VS Code
-- One-click connection from the status bar
-- Secure remote development environment with Azure CLI integration
 
 ![](https://github.com/taizod1024/vscode-azure-bastion-extension/blob/main/images/azure-bastion_1.png?raw=true)
 
 ![](https://github.com/taizod1024/vscode-azure-bastion-extension/blob/main/images/azure-bastion_2.png?raw=true)
+
+## Features
+
+- Easily create connections through Azure Bastion directly from VS Code (Tunnel, SSH, RDP)
+- Tunnel: Establish port forwarding for direct access
+- SSH: Interactive SSH connections
+- RDP: Remote Desktop connections
+- One-click connection from the status bar
+- Secure remote development environment with Azure CLI integration
 
 ## Install
 
@@ -26,10 +29,13 @@ A VS Code extension for Azure Bastion
 
 ## Configuration
 
+**Note**: The **Port** value in ~/.ssh/config must correspond to the **Local Port** setting.
+
 1. Edit your `~/.ssh/config` file with the following structure:
    ```
-   Host example
+   Host localhost:60022(example_user@example.com:22)
        HostName example.com
+       User example_user
        Port 60022
    ```
 2. Configure the extension settings in VS Code (`azure-bastion`):
@@ -47,3 +53,4 @@ A VS Code extension for Azure Bastion
 2.  Select operation type
     - Tunnel
     - SSH
+    - RDP
