@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.9](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.8...v0.0.9) (2026-03-14)
+
+
+### Features
+
+* add RDP support and update README with connection options ([733e508](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/733e508e1f0f79b5791e67375a4e1ecd8066f439))
+* update README and script to include hostname extraction for SSH connections ([157ff6b](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/157ff6b221357a5faa7f2aff7187b76819f22a3c))
+
 ### [0.0.8](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.7...v0.0.8) (2026-03-14)
 
 
