@@ -304,7 +304,7 @@ class AzureBastion {
 
     // Select VM Resource ID
     const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `localhost:${localPorts[index]} -> ${usernames[index]}@${this.getHostNameFromResourceId(id)}:${remotePort}`,
+      label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}:${remotePort}`,
       value: index,
     }));
 
@@ -385,7 +385,7 @@ class AzureBastion {
 
     // Select VM Resource ID
     const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}`,
+      label: `${this.getHostNameFromResourceId(id)}`,
       value: index,
     }));
 
