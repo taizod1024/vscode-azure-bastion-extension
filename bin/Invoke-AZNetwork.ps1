@@ -21,7 +21,7 @@ param(
     [string]$Username,
     
     [Parameter(Mandatory = $false)]
-    [ValidateSet("tunnel", "ssh")]
+    [ValidateSet("tunnel", "ssh", "rdp")]
     [string]$Mode = "tunnel"
 )
 
@@ -37,6 +37,9 @@ if ($Mode -eq "tunnel") {
 }
 elseif ($Mode -eq "ssh") {
     [System.Console]::Title = "Azure Bastion SSH"
+}
+elseif ($Mode -eq "rdp") {
+    [System.Console]::Title = "Azure Bastion RDP"
 }
 
 # Helper functions
@@ -170,4 +173,22 @@ elseif ($Mode -eq "ssh") {
     }
     
     Write-Log "SSH connection closed"
+}
+elseif ($Mode -eq "rdp") {
+    # Execute Bastion RDP command
+    Write-Log "Establishing RDP connection..."
+    
+    az network Bastion rdp `
+        --name $BastionName `
+        --resource-group $BastionResourceGroup `
+        --target-resource-id $TargetVmResourceId
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorLog "Failed to establish RDP connection (exit code: $LASTEXITCODE)"
+        Write-WarnLog "Press Enter to exit..."
+        Read-Host
+        exit 1
+    }
+    
+    Write-Log "RDP connection closed"
 }

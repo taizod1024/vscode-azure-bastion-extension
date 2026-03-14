@@ -26,6 +26,7 @@ class AzureBastion {
   private readonly commandOpenSettings = "workbench.action.openSettings";
   private readonly menuTunnel = "tunnel";
   private readonly menuSSH = "ssh";
+  private readonly menuRDP = "rdp";
   private readonly menuEditSSHConfig = "editSSHConfig";
   private readonly menuSettings = "settings";
 
@@ -91,6 +92,7 @@ class AzureBastion {
       [
         { label: "$(debug-disconnect) Tunnel", description: "Establish tunnel connection", value: this.menuTunnel },
         { label: "$(terminal) SSH", description: "Establish SSH connection", value: this.menuSSH },
+        { label: "$(remote-explorer) RDP", description: "Establish RDP connection", value: this.menuRDP },
         { kind: vscode.QuickPickItemKind.Separator, label: "" },
         { label: "$(edit) Edit SSH Config", description: "Edit ~/.ssh/config", value: this.menuEditSSHConfig },
         { label: "$(gear) Settings", description: "Open extension settings", value: this.menuSettings },
@@ -115,6 +117,8 @@ class AzureBastion {
         await this.executeTunnel();
       } else if (selected.value === this.menuSSH) {
         await this.executeSSH();
+      } else if (selected.value === this.menuRDP) {
+        await this.executeRDP();
       } else if (selected.value === this.menuEditSSHConfig) {
         await this.editSSHConfig();
       } else if (selected.value === this.menuSettings) {
@@ -155,7 +159,12 @@ class AzureBastion {
           }
 
           // Create empty config file
-          fs.writeFileSync(sshConfigPath, "");
+          const sshConfigTemplate = `Host localhost:60022(example_user@example.com:22)
+    HostName example.com
+    User example_user
+    Port 60022
+`;
+          fs.writeFileSync(sshConfigPath, sshConfigTemplate);
           this.channel.appendLine(`Created SSH config file: ${sshConfigPath}`);
         } else {
           this.channel.appendLine("User cancelled SSH config file creation");
@@ -333,6 +342,87 @@ class AzureBastion {
       vscode.window.showErrorMessage(`Execution error: ${error}`);
     }
     this.channel.appendLine("executeSSH: Completed");
+  }
+
+  private async executeRDP() {
+    this.channel.appendLine("executeRDP: Starting RDP connection");
+
+    // Check WINDIR environment variable
+    if (!process.env.WINDIR) {
+      const errorMsg = this.msgWindirNotSet;
+      this.channel.appendLine(`ERROR: ${errorMsg}`);
+      vscode.window.showErrorMessage(errorMsg);
+      return;
+    }
+
+    // Get configuration
+    const config = vscode.workspace.getConfiguration(this.appId);
+    const subscriptionId = config.get<string>(this.configSubscriptionId);
+    const bastionName = config.get<string>(this.configBastionName);
+    const bastionResourceGroup = config.get<string>(this.configBastionResourceGroup);
+    const targetVmResourceIds = config.get<string[]>(this.configTargetVmResourceId) || [];
+    const remotePort = config.get<number>(this.configRemotePort);
+    const localPorts = config.get<number[]>(this.configLocalPort) || [];
+    const usernames = config.get<string[]>(this.configUsername) || [];
+
+    // Validate required parameters
+    const missingParams: string[] = [];
+    if (!subscriptionId) missingParams.push(this.configSubscriptionId);
+    if (!bastionName) missingParams.push(this.configBastionName);
+    if (!bastionResourceGroup) missingParams.push(this.configBastionResourceGroup);
+    if (targetVmResourceIds.length === 0) missingParams.push(this.configTargetVmResourceId);
+    if (!remotePort) missingParams.push(this.configRemotePort);
+    if (localPorts.length === 0) missingParams.push(this.configLocalPort);
+    if (usernames.length === 0) missingParams.push(this.configUsername);
+
+    if (missingParams.length > 0) {
+      const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
+      this.channel.appendLine(`ERROR: ${errorMsg}`);
+      vscode.window.showErrorMessage(errorMsg);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      return;
+    }
+
+    // Select VM Resource ID
+    const vmOptions = targetVmResourceIds.map((id, index) => ({
+      label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}`,
+      value: index,
+    }));
+
+    const selectedVmIndex = await vscode.window.showQuickPick(vmOptions, {
+      placeHolder: "Select target VM",
+      ignoreFocusOut: false,
+    });
+
+    if (selectedVmIndex === undefined) {
+      this.channel.appendLine("User cancelled VM selection");
+      return;
+    }
+
+    // Use the username corresponding to the selected VM index
+    const targetVmResourceId = targetVmResourceIds[selectedVmIndex.value];
+    const username = usernames[selectedVmIndex.value];
+
+    try {
+      // Prepare PowerShell script path
+      const scriptPath = path.join(this.extensionPath, this.scriptDir, this.scriptName);
+
+      // Execute PowerShell script with RDP parameter
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-Username',${username},'-Mode','rdp'`;
+      this.channel.appendLine(`Command: ${cmd}`);
+      exec(cmd, (error, _stdout, stderr) => {
+        if (error) {
+          this.channel.appendLine(`Command execution error: ${error}`);
+        }
+        if (stderr) {
+          this.channel.appendLine(`stderr: ${stderr}`);
+        }
+      });
+    } catch (error) {
+      this.channel.appendLine(`Command execution error: ${error}`);
+      vscode.window.showErrorMessage(`Execution error: ${error}`);
+    }
+    this.channel.appendLine("executeRDP: Completed");
   }
 }
 
