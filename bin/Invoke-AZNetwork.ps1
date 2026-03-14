@@ -27,9 +27,13 @@ param(
 
 $ErrorActionPreference = "SilentlyContinue"
 
+# Extract hostname from TargetVmResourceId
+$HostName = $TargetVmResourceId -split "/" | Select-Object -Last 1
+
 # Set window title
 if ($Mode -eq "tunnel") {
     [System.Console]::Title = "Azure Bastion Tunnel"
+    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
 }
 elseif ($Mode -eq "ssh") {
     [System.Console]::Title = "Azure Bastion SSH"
@@ -125,17 +129,11 @@ if ($LASTEXITCODE -ne 0) {
 Write-Log "Subscription set successfully"
 
 # Execute Bastion command
-Write-Log "Establishing connection to target VM..."
-Write-Log "  Bastion: $BastionName"
-Write-Log "  Resource Group: $BastionResourceGroup"
-Write-Log "  Target VM: $TargetVmResourceId"
-Write-Log "  Mode: $Mode"
-
 if ($Mode -eq "tunnel") {
     # Execute Bastion tunnel command
     Write-Log "Creating tunnel connection..."
-    Write-Log "  Remote Port: $RemotePort"
-    Write-Log "  Local Port: $LocalPort"
+
+    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
     
     az network Bastion tunnel `
         --name $BastionName `

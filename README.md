@@ -26,10 +26,13 @@ A VS Code extension for Azure Bastion
 
 ## Configuration
 
+**Note**: The **Port** value in ~/.ssh/config must correspond to the **Local Port** setting.
+
 1. Edit your `~/.ssh/config` file with the following structure:
    ```
-   Host example
+   Host localhost:60022(example_user@example.com:22)
        HostName example.com
+       User example_user
        Port 60022
    ```
 2. Configure the extension settings in VS Code (`azure-bastion`):
