@@ -1,7 +1,7 @@
 {
   "version": "0.0.7",
   "name": "azure-bastion",
-  "displayName": "Azure Bastion Extension (Work In Progress)",
+  "displayName": "Azure Bastion Extension",
   "description": "A VS Code extension for Azure Bastion",
   "engines": {
     "vscode": "^1.90.0"
