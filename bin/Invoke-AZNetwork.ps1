@@ -28,7 +28,12 @@ param(
 $ErrorActionPreference = "SilentlyContinue"
 
 # Set window title
-[System.Console]::Title = "Azure Bastion"
+if ($Mode -eq "tunnel") {
+    [System.Console]::Title = "Azure Bastion Tunnel"
+}
+elseif ($Mode -eq "ssh") {
+    [System.Console]::Title = "Azure Bastion SSH"
+}
 
 # Helper functions
 function Get-Timestamp {
@@ -43,6 +48,11 @@ function Write-Log {
 function Write-ErrorLog {
     param([string]$Message)
     Write-Host "[$((Get-Timestamp))] ERROR: $Message" -ForegroundColor Red
+}
+
+function Write-WarnLog {
+    param([string]$Message)
+    Write-Host "[$((Get-Timestamp))] $Message" -ForegroundColor Yellow
 }
 
 Write-Log "Script started"
@@ -64,14 +74,16 @@ elseif ($Mode -eq "ssh") {
 if ($Mode -eq "tunnel") {
     if (-not $RemotePort -or -not $LocalPort) {
         Write-ErrorLog "Tunnel mode requires RemotePort and LocalPort parameters"
-        Read-Host "Press Enter to exit"
+        Write-WarnLog "Press Enter to exit..."
+        Read-Host
         exit 1
     }
 }
 elseif ($Mode -eq "ssh") {
     if (-not $Username) {
         Write-ErrorLog "SSH mode requires Username parameter"
-        Read-Host "Press Enter to exit"
+        Write-WarnLog "Press Enter to exit..."
+        Read-Host
         exit 1
     }
 }
@@ -81,8 +93,10 @@ Write-Log "Checking if Azure CLI is installed..."
 $azCommand = Get-Command az -ErrorAction SilentlyContinue
 if (-not $azCommand) {
     Write-ErrorLog "Azure CLI (az) is not installed or not found in PATH"
-    Read-Host "Press Enter to exit"
+    Write-WarnLog "Press Enter to exit..."
+    Read-Host
     exit 1
+
 }
 Write-Log "Azure CLI found"
 
@@ -92,7 +106,8 @@ $null | az login --output none
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to login to Azure (exit code: $LASTEXITCODE)"
-    Read-Host "Press Enter to exit"
+    Write-WarnLog "Press Enter to exit..."
+    Read-Host
     exit 1
 }
 Write-Log "Azure login successful"
@@ -103,7 +118,8 @@ az account set --subscription $SubscriptionId
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to set subscription (exit code: $LASTEXITCODE)"
-    Read-Host "Press Enter to exit"
+    Write-WarnLog "Press Enter to exit..."
+    Read-Host
     exit 1
 }
 Write-Log "Subscription set successfully"
@@ -130,7 +146,8 @@ if ($Mode -eq "tunnel") {
     
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorLog "Failed to create Bastion tunnel (exit code: $LASTEXITCODE)"
-        Read-Host "Press Enter to exit"
+        Write-WarnLog "Press Enter to exit..."
+        Read-Host
         exit 1
     }
     
@@ -149,10 +166,10 @@ elseif ($Mode -eq "ssh") {
     
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorLog "Failed to establish SSH connection (exit code: $LASTEXITCODE)"
-        Read-Host "Press Enter to exit"
+        Write-WarnLog "Press Enter to exit..."
+        Read-Host
         exit 1
     }
     
     Write-Log "SSH connection closed"
 }
-Read-Host "Press Enter to exit"
