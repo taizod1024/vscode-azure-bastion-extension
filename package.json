@@ -1,5 +1,5 @@
 {
-  "version": "0.0.9",
+  "version": "0.0.10",
   "name": "azure-bastion",
   "displayName": "Azure Bastion Extension",
   "description": "A VS Code extension for Azure Bastion",
