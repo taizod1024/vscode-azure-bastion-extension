@@ -201,7 +201,7 @@ class AzureBastion {
     const bastionName = config.get<string>(this.configBastionName);
     const bastionResourceGroup = config.get<string>(this.configBastionResourceGroup);
     const targetVmResourceIds = config.get<string[]>(this.configTargetVmResourceId) || [];
-    const remotePort = config.get<number>(this.configRemotePort);
+    const remotePorts = config.get<number[]>(this.configRemotePort) || [];
     const localPorts = config.get<number[]>(this.configLocalPort) || [];
 
     // Validate required parameters
@@ -210,16 +210,25 @@ class AzureBastion {
     if (!bastionName) missingParams.push(this.configBastionName);
     if (!bastionResourceGroup) missingParams.push(this.configBastionResourceGroup);
     if (targetVmResourceIds.length === 0) missingParams.push(this.configTargetVmResourceId);
-    if (!remotePort) missingParams.push(this.configRemotePort);
+    if (remotePorts.length === 0) missingParams.push(this.configRemotePort);
     if (localPorts.length === 0) missingParams.push(this.configLocalPort);
 
     // Validate list lengths match
-    if (targetVmResourceIds.length > 0 && localPorts.length > 0 && targetVmResourceIds.length !== localPorts.length) {
-      const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configLocalPort} (${localPorts.length}) must have the same length`;
-      this.channel.appendLine(`ERROR: ${errorMsg}`);
-      vscode.window.showErrorMessage(errorMsg);
-      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
-      return;
+    if (targetVmResourceIds.length > 0 && (remotePorts.length > 0 || localPorts.length > 0)) {
+      if (targetVmResourceIds.length !== remotePorts.length) {
+        const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configRemotePort} (${remotePorts.length}) must have the same length`;
+        this.channel.appendLine(`ERROR: ${errorMsg}`);
+        vscode.window.showErrorMessage(errorMsg);
+        await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+        return;
+      }
+      if (targetVmResourceIds.length !== localPorts.length) {
+        const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configLocalPort} (${localPorts.length}) must have the same length`;
+        this.channel.appendLine(`ERROR: ${errorMsg}`);
+        vscode.window.showErrorMessage(errorMsg);
+        await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+        return;
+      }
     }
 
     if (missingParams.length > 0) {
@@ -232,7 +241,7 @@ class AzureBastion {
 
     // Select VM Resource ID
     const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `localhost:${localPorts[index]} -> ${this.getHostNameFromResourceId(id)}:${remotePort}`,
+      label: `localhost:${localPorts[index]} -> ${this.getHostNameFromResourceId(id)}:${remotePorts[index]}`,
       value: index,
     }));
 
@@ -246,8 +255,9 @@ class AzureBastion {
       return;
     }
 
-    // Use the local port corresponding to the selected VM index
+    // Use the values corresponding to the selected VM index
     const targetVmResourceId = targetVmResourceIds[selectedVmIndex.value];
+    const remotePort = remotePorts[selectedVmIndex.value];
     const localPort = localPorts[selectedVmIndex.value];
 
     try {
@@ -255,7 +265,7 @@ class AzureBastion {
       const scriptPath = path.join(this.extensionPath, this.scriptDir, this.scriptName);
 
       // Execute PowerShell script
-      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()},'-Mode','tunnel'`;
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort},'-LocalPort',${localPort},'-Mode','tunnel'`;
       this.channel.appendLine(`Command: ${cmd}`);
       exec(cmd, (error, _stdout, stderr) => {
         if (error) {
