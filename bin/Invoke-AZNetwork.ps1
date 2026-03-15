@@ -70,11 +70,11 @@ Write-Host "  - BastionResourceGroup: $BastionResourceGroup"
 Write-Host "  - TargetVmResourceId: $TargetVmResourceId"
 Write-Host "  - Mode: $Mode"
 if ($Mode -eq "tunnel") {
-    Write-Host "  - RemotePort: $RemotePort"
-    Write-Host "  - LocalPort: $LocalPort"
+    Write-Host "    - RemotePort: $RemotePort"
+    Write-Host "    - LocalPort: $LocalPort"
 }
 elseif ($Mode -eq "ssh") {
-    Write-Host "  - Username: $Username"
+    Write-Host "    - Username: $Username"
 }
 
 # Validate mode-specific parameters
@@ -136,7 +136,7 @@ if ($Mode -eq "tunnel") {
     # Execute Bastion tunnel command
     Write-Log "Creating tunnel connection..."
 
-    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
+    [System.Console]::Title = "localhost -> $($HostName)"
     
     az network Bastion tunnel `
         --name $BastionName `

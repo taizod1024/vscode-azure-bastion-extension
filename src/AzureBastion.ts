@@ -35,9 +35,9 @@ class AzureBastion {
   private readonly configBastionName = "bastionName";
   private readonly configBastionResourceGroup = "bastionResourceGroup";
   private readonly configTargetVmResourceId = "targetVmResourceId";
-  private readonly configRemotePort = "remotePort";
-  private readonly configLocalPort = "localPort";
-  private readonly configUsername = "username";
+  private readonly configRemotePort = "tunnel.remotePort";
+  private readonly configLocalPort = "tunnel.localPort";
+  private readonly configUsername = "ssh.username";
 
   // Constants - Paths
   private readonly sshDirName = ".ssh";
@@ -213,6 +213,15 @@ class AzureBastion {
     if (!remotePort) missingParams.push(this.configRemotePort);
     if (localPorts.length === 0) missingParams.push(this.configLocalPort);
 
+    // Validate list lengths match
+    if (targetVmResourceIds.length > 0 && localPorts.length > 0 && targetVmResourceIds.length !== localPorts.length) {
+      const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configLocalPort} (${localPorts.length}) must have the same length`;
+      this.channel.appendLine(`ERROR: ${errorMsg}`);
+      vscode.window.showErrorMessage(errorMsg);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      return;
+    }
+
     if (missingParams.length > 0) {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
       this.channel.appendLine(`ERROR: ${errorMsg}`);
@@ -246,7 +255,7 @@ class AzureBastion {
       const scriptPath = path.join(this.extensionPath, this.scriptDir, this.scriptName);
 
       // Execute PowerShell script
-      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()}`;
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-RemotePort',${remotePort.toString()},'-LocalPort',${localPort.toString()},'-Mode','tunnel'`;
       this.channel.appendLine(`Command: ${cmd}`);
       exec(cmd, (error, _stdout, stderr) => {
         if (error) {
@@ -280,19 +289,24 @@ class AzureBastion {
     const bastionName = config.get<string>(this.configBastionName);
     const bastionResourceGroup = config.get<string>(this.configBastionResourceGroup);
     const targetVmResourceIds = config.get<string[]>(this.configTargetVmResourceId) || [];
-    const remotePort = config.get<number>(this.configRemotePort);
-    const localPorts = config.get<number[]>(this.configLocalPort) || [];
     const usernames = config.get<string[]>(this.configUsername) || [];
 
-    // Validate required parameters
+    // Validate required parameters (SSH mode specific)
     const missingParams: string[] = [];
     if (!subscriptionId) missingParams.push(this.configSubscriptionId);
     if (!bastionName) missingParams.push(this.configBastionName);
     if (!bastionResourceGroup) missingParams.push(this.configBastionResourceGroup);
     if (targetVmResourceIds.length === 0) missingParams.push(this.configTargetVmResourceId);
-    if (!remotePort) missingParams.push(this.configRemotePort);
-    if (localPorts.length === 0) missingParams.push(this.configLocalPort);
     if (usernames.length === 0) missingParams.push(this.configUsername);
+
+    // Validate list lengths match
+    if (targetVmResourceIds.length > 0 && usernames.length > 0 && targetVmResourceIds.length !== usernames.length) {
+      const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configUsername} (${usernames.length}) must have the same length`;
+      this.channel.appendLine(`ERROR: ${errorMsg}`);
+      vscode.window.showErrorMessage(errorMsg);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      return;
+    }
 
     if (missingParams.length > 0) {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
@@ -304,7 +318,7 @@ class AzureBastion {
 
     // Select VM Resource ID
     const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}:${remotePort}`,
+      label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}`,
       value: index,
     }));
 
@@ -361,19 +375,13 @@ class AzureBastion {
     const bastionName = config.get<string>(this.configBastionName);
     const bastionResourceGroup = config.get<string>(this.configBastionResourceGroup);
     const targetVmResourceIds = config.get<string[]>(this.configTargetVmResourceId) || [];
-    const remotePort = config.get<number>(this.configRemotePort);
-    const localPorts = config.get<number[]>(this.configLocalPort) || [];
-    const usernames = config.get<string[]>(this.configUsername) || [];
 
-    // Validate required parameters
+    // Validate required parameters (RDP mode specific)
     const missingParams: string[] = [];
     if (!subscriptionId) missingParams.push(this.configSubscriptionId);
     if (!bastionName) missingParams.push(this.configBastionName);
     if (!bastionResourceGroup) missingParams.push(this.configBastionResourceGroup);
     if (targetVmResourceIds.length === 0) missingParams.push(this.configTargetVmResourceId);
-    if (!remotePort) missingParams.push(this.configRemotePort);
-    if (localPorts.length === 0) missingParams.push(this.configLocalPort);
-    if (usernames.length === 0) missingParams.push(this.configUsername);
 
     if (missingParams.length > 0) {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
@@ -399,16 +407,15 @@ class AzureBastion {
       return;
     }
 
-    // Use the username corresponding to the selected VM index
+    // Use the target VM resource ID corresponding to the selected VM index
     const targetVmResourceId = targetVmResourceIds[selectedVmIndex.value];
-    const username = usernames[selectedVmIndex.value];
 
     try {
       // Prepare PowerShell script path
       const scriptPath = path.join(this.extensionPath, this.scriptDir, this.scriptName);
 
       // Execute PowerShell script with RDP parameter
-      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-Username',${username},'-Mode','rdp'`;
+      const cmd = `powershell -command start-process 'cmd.exe' -argumentlist '/c','powershell','-ExecutionPolicy','RemoteSigned','${scriptPath}','-SubscriptionId',${subscriptionId},'-BastionName',${bastionName},'-BastionResourceGroup',${bastionResourceGroup},'-TargetVmResourceId',${targetVmResourceId},'-Mode','rdp'`;
       this.channel.appendLine(`Command: ${cmd}`);
       exec(cmd, (error, _stdout, stderr) => {
         if (error) {
