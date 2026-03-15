@@ -45,9 +45,9 @@ A VS Code extension for Azure Bastion
    - **Target VM Resource IDs**: List of Azure VM resource IDs to connect to
    - **Tunnel**:
      - **Local Ports**: List of local ports to bind tunnels (example: [60022, 60023])
-     - **Usernames**: List of SSH usernames for connection (example: ["user1", "user2"])
-   - **SSH**:
      - **Remote Ports**: List of ports on the target VMs (example: [22, 22])
+   - **SSH**:
+     - **Usernames**: List of SSH usernames for connection (example: ["user1", "user2"])
 
 ## Usage
 

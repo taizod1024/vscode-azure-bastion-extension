@@ -65,21 +65,21 @@
           "items": {
             "type": "integer"
           },
-          "description": "List of remote ports on the target VMs (default: 22 for SSH)"
+          "description": "List of remote ports on the target VMs for Tunnel. For SSH and RDP, set to 0."
         },
         "azure-bastion.tunnel.localPort": {
           "type": "array",
           "items": {
             "type": "integer"
           },
-          "description": "List of local ports to bind the tunnel to"
+          "description": "List of local ports to bind the tunnel to for Tunnel. For SSH and RDP, set to 0."
         },
         "azure-bastion.ssh.username": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "List of usernames for SSH connection"
+          "description": "List of usernames for SSH. For Tunnel and RDP, set to empty string."
         }
       }
     }

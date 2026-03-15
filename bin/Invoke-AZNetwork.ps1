@@ -33,13 +33,15 @@ $HostName = $TargetVmResourceId -split "/" | Select-Object -Last 1
 # Set window title
 if ($Mode -eq "tunnel") {
     [System.Console]::Title = "Azure Bastion Tunnel"
-    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
+    [System.Console]::Title = "localhost -> $($HostName)"
 }
 elseif ($Mode -eq "ssh") {
     [System.Console]::Title = "Azure Bastion SSH"
+    [System.Console]::Title = "$($UserName)@$($HostName)"
 }
 elseif ($Mode -eq "rdp") {
     [System.Console]::Title = "Azure Bastion RDP"
+    [System.Console]::Title = "$($HostName)"
 }
 
 # Helper functions
@@ -70,8 +72,8 @@ Write-Host "  - BastionResourceGroup: $BastionResourceGroup"
 Write-Host "  - TargetVmResourceId: $TargetVmResourceId"
 Write-Host "  - Mode: $Mode"
 if ($Mode -eq "tunnel") {
-    Write-Host "    - RemotePort: $RemotePort"
     Write-Host "    - LocalPort: $LocalPort"
+    Write-Host "    - RemotePort: $RemotePort"
 }
 elseif ($Mode -eq "ssh") {
     Write-Host "    - Username: $Username"
@@ -134,7 +136,7 @@ Write-Log "Subscription set successfully"
 # Execute Bastion command
 if ($Mode -eq "tunnel") {
     # Execute Bastion tunnel command
-    Write-Log "Creating tunnel connection..."
+    Write-Log "Creating Tunnel connection..."
 
     [System.Console]::Title = "localhost -> $($HostName)"
     
@@ -146,7 +148,7 @@ if ($Mode -eq "tunnel") {
         --port $LocalPort
     
     if ($LASTEXITCODE -ne 0) {
-        Write-ErrorLog "Failed to create Bastion tunnel (exit code: $LASTEXITCODE)"
+        Write-ErrorLog "Failed to create Bastion Tunnel (exit code: $LASTEXITCODE)"
         Write-WarnLog "Press Enter to exit..."
         Read-Host
         exit 1
