@@ -33,19 +33,21 @@ A VS Code extension for Azure Bastion
 
 1. Edit your `~/.ssh/config` file with the following structure:
    ```
-   Host localhost:60022(example_user@example.com:22)
-       HostName example.com
-       User example_user
+   Host localhost(example_vm)
+       HostName localhost
        Port 60022
+       User example_user
    ```
 2. Configure the extension settings in VS Code (`azure-bastion`):
    - **Azure Subscription ID**: Your Azure subscription ID
    - **Bastion Resource Name**: Name of the Azure Bastion resource
    - **Resource Group**: The resource group containing the Bastion resource
-   - **Remote Port**: Port on the target VM (default: 22 for SSH)
-   - **Usernames**: List of SSH usernames for connection
    - **Target VM Resource IDs**: List of Azure VM resource IDs to connect to
-   - **Local Ports**: List of local ports to bind tunnels (example: 60022)
+   - **Tunnel**:
+     - **Local Ports**: List of local ports to bind tunnels (example: [60022, 60023])
+     - **Usernames**: List of SSH usernames for connection (example: ["user1", "user2"])
+   - **SSH**:
+     - **Remote Ports**: List of ports on the target VMs (example: [22, 22])
 
 ## Usage
 
