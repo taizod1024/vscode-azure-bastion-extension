@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.0](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.12...v0.1.0) (2026-03-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* update remote port configuration to support multiple ports
+
+### Features
+
+* update remote port configuration to support multiple ports ([a7cbc65](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/a7cbc6526adb4919b0941e26d0f4c2e386e14746))
+
 ### [0.0.12](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.11...v0.0.12) (2026-03-15)
 
 
