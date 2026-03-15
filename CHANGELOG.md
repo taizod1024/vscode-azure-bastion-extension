@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.12](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.11...v0.0.12) (2026-03-15)
+
+
+### Features
+
+* mark server selection and multiple targets as done in TODO ([1b1a497](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/1b1a497f6bd86b00d4ea1e7f0cec9bb3d6e017aa))
+* update configuration keys for tunnel and SSH modes in settings ([baba974](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/baba9745d0ab3dae6478d8ef66b12da798657979))
+
 ### [0.0.11](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.0.10...v0.0.11) (2026-03-14)
 
 
