@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.2](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.1...v0.1.2) (2026-03-15)
+
+
+### Features
+
+* update settings search string for command execution ([933dead](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/933deade7728c3fef52f1403e74a17dfa4cc5bd0))
+
 ### [0.1.1](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.0...v0.1.1) (2026-03-15)
 
 
