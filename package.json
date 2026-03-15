@@ -61,9 +61,11 @@
           "description": "List of Resource IDs of target VMs"
         },
         "azure-bastion.tunnel.remotePort": {
-          "type": "integer",
-          "default": 22,
-          "description": "Remote port on the target VM (default: 22 for SSH)"
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "List of remote ports on the target VMs (default: 22 for SSH)"
         },
         "azure-bastion.tunnel.localPort": {
           "type": "array",
