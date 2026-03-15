@@ -33,7 +33,7 @@ $HostName = $TargetVmResourceId -split "/" | Select-Object -Last 1
 # Set window title
 if ($Mode -eq "tunnel") {
     [System.Console]::Title = "Azure Bastion Tunnel"
-    [System.Console]::Title = "localhost:$LocalPort -> $($HostName):$RemotePort"
+    [System.Console]::Title = "localhost -> $($HostName)"
 }
 elseif ($Mode -eq "ssh") {
     [System.Console]::Title = "Azure Bastion SSH"
@@ -70,8 +70,8 @@ Write-Host "  - BastionResourceGroup: $BastionResourceGroup"
 Write-Host "  - TargetVmResourceId: $TargetVmResourceId"
 Write-Host "  - Mode: $Mode"
 if ($Mode -eq "tunnel") {
-    Write-Host "    - RemotePort: $RemotePort"
     Write-Host "    - LocalPort: $LocalPort"
+    Write-Host "    - RemotePort: $RemotePort"
 }
 elseif ($Mode -eq "ssh") {
     Write-Host "    - Username: $Username"
