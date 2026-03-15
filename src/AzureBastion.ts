@@ -24,6 +24,7 @@ class AzureBastion {
   // Constants - Command and Menu
   private readonly commandInvokeAZNetwork = "invokeAZNetWork";
   private readonly commandOpenSettings = "workbench.action.openSettings";
+  private readonly settingsSearchString = `${this.appId}.`;
   private readonly menuTunnel = "tunnel";
   private readonly menuSSH = "ssh";
   private readonly menuRDP = "rdp";
@@ -122,7 +123,7 @@ class AzureBastion {
       } else if (selected.value === this.menuEditSSHConfig) {
         await this.editSSHConfig();
       } else if (selected.value === this.menuSettings) {
-        await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+        await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
       }
     } catch (error) {
       this.channel.appendLine(`Error: ${error}`);
@@ -219,14 +220,14 @@ class AzureBastion {
         const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configRemotePort} (${remotePorts.length}) must have the same length`;
         this.channel.appendLine(`ERROR: ${errorMsg}`);
         vscode.window.showErrorMessage(errorMsg);
-        await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+        await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
         return;
       }
       if (targetVmResourceIds.length !== localPorts.length) {
         const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configLocalPort} (${localPorts.length}) must have the same length`;
         this.channel.appendLine(`ERROR: ${errorMsg}`);
         vscode.window.showErrorMessage(errorMsg);
-        await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+        await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
         return;
       }
     }
@@ -235,13 +236,14 @@ class AzureBastion {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
       this.channel.appendLine(`ERROR: ${errorMsg}`);
       vscode.window.showErrorMessage(errorMsg);
-      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
       return;
     }
 
     // Select VM Resource ID
     const vmOptions = targetVmResourceIds.map((id, index) => ({
       label: `localhost:${localPorts[index]} -> ${this.getHostNameFromResourceId(id)}:${remotePorts[index]}`,
+
       value: index,
     }));
 
@@ -314,7 +316,7 @@ class AzureBastion {
       const errorMsg = `List length mismatch: ${this.configTargetVmResourceId} (${targetVmResourceIds.length}) and ${this.configUsername} (${usernames.length}) must have the same length`;
       this.channel.appendLine(`ERROR: ${errorMsg}`);
       vscode.window.showErrorMessage(errorMsg);
-      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
       return;
     }
 
@@ -322,13 +324,14 @@ class AzureBastion {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
       this.channel.appendLine(`ERROR: ${errorMsg}`);
       vscode.window.showErrorMessage(errorMsg);
-      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
       return;
     }
 
     // Select VM Resource ID
     const vmOptions = targetVmResourceIds.map((id, index) => ({
       label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}`,
+
       value: index,
     }));
 
@@ -397,7 +400,7 @@ class AzureBastion {
       const errorMsg = `Missing required parameters: ${missingParams.join(", ")}`;
       this.channel.appendLine(`ERROR: ${errorMsg}`);
       vscode.window.showErrorMessage(errorMsg);
-      await vscode.commands.executeCommand(this.commandOpenSettings, this.appId);
+      await vscode.commands.executeCommand(this.commandOpenSettings, this.settingsSearchString);
       return;
     }
 
