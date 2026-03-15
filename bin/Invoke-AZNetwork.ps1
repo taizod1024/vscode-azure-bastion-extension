@@ -37,9 +37,11 @@ if ($Mode -eq "tunnel") {
 }
 elseif ($Mode -eq "ssh") {
     [System.Console]::Title = "Azure Bastion SSH"
+    [System.Console]::Title = "$($UserName)@$($HostName)"
 }
 elseif ($Mode -eq "rdp") {
     [System.Console]::Title = "Azure Bastion RDP"
+    [System.Console]::Title = "$($HostName)"
 }
 
 # Helper functions
@@ -134,7 +136,7 @@ Write-Log "Subscription set successfully"
 # Execute Bastion command
 if ($Mode -eq "tunnel") {
     # Execute Bastion tunnel command
-    Write-Log "Creating tunnel connection..."
+    Write-Log "Creating Tunnel connection..."
 
     [System.Console]::Title = "localhost -> $($HostName)"
     
@@ -146,7 +148,7 @@ if ($Mode -eq "tunnel") {
         --port $LocalPort
     
     if ($LASTEXITCODE -ne 0) {
-        Write-ErrorLog "Failed to create Bastion tunnel (exit code: $LASTEXITCODE)"
+        Write-ErrorLog "Failed to create Bastion Tunnel (exit code: $LASTEXITCODE)"
         Write-WarnLog "Press Enter to exit..."
         Read-Host
         exit 1

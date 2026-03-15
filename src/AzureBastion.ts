@@ -241,11 +241,12 @@ class AzureBastion {
     }
 
     // Select VM Resource ID
-    const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `localhost:${localPorts[index]} -> ${this.getHostNameFromResourceId(id)}:${remotePorts[index]}`,
-
-      value: index,
-    }));
+    const vmOptions = targetVmResourceIds
+      .map((id, index) => ({
+        label: `localhost:${localPorts[index]} -> ${this.getHostNameFromResourceId(id)}:${remotePorts[index]}`,
+        value: index,
+      }))
+      .filter(option => localPorts[option.value] !== 0 && remotePorts[option.value] !== 0);
 
     const selectedVmIndex = await vscode.window.showQuickPick(vmOptions, {
       placeHolder: "Select target VM",
@@ -329,11 +330,12 @@ class AzureBastion {
     }
 
     // Select VM Resource ID
-    const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}`,
-
-      value: index,
-    }));
+    const vmOptions = targetVmResourceIds
+      .map((id, index) => ({
+        label: `${usernames[index]}@${this.getHostNameFromResourceId(id)}`,
+        value: index,
+      }))
+      .filter(option => usernames[option.value] !== "");
 
     const selectedVmIndex = await vscode.window.showQuickPick(vmOptions, {
       placeHolder: "Select target VM",
@@ -388,6 +390,9 @@ class AzureBastion {
     const bastionName = config.get<string>(this.configBastionName);
     const bastionResourceGroup = config.get<string>(this.configBastionResourceGroup);
     const targetVmResourceIds = config.get<string[]>(this.configTargetVmResourceId) || [];
+    const usernames = config.get<string[]>(this.configUsername) || [];
+    const remotePorts = config.get<number[]>(this.configRemotePort) || [];
+    const localPorts = config.get<number[]>(this.configLocalPort) || [];
 
     // Validate required parameters (RDP mode specific)
     const missingParams: string[] = [];
@@ -405,10 +410,12 @@ class AzureBastion {
     }
 
     // Select VM Resource ID
-    const vmOptions = targetVmResourceIds.map((id, index) => ({
-      label: `${this.getHostNameFromResourceId(id)}`,
-      value: index,
-    }));
+    const vmOptions = targetVmResourceIds
+      .map((id, index) => ({
+        label: `${this.getHostNameFromResourceId(id)}`,
+        value: index,
+      }))
+      .filter(option => usernames[option.value] === "" && remotePorts[option.value] === 0 && localPorts[option.value] === 0);
 
     const selectedVmIndex = await vscode.window.showQuickPick(vmOptions, {
       placeHolder: "Select target VM",
