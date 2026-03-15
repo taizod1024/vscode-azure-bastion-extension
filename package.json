@@ -60,19 +60,19 @@
           },
           "description": "List of Resource IDs of target VMs"
         },
-        "azure-bastion.remotePort": {
+        "azure-bastion.tunnel.remotePort": {
           "type": "integer",
           "default": 22,
           "description": "Remote port on the target VM (default: 22 for SSH)"
         },
-        "azure-bastion.localPort": {
+        "azure-bastion.tunnel.localPort": {
           "type": "array",
           "items": {
             "type": "integer"
           },
           "description": "List of local ports to bind the tunnel to"
         },
-        "azure-bastion.username": {
+        "azure-bastion.ssh.username": {
           "type": "array",
           "items": {
             "type": "string"
