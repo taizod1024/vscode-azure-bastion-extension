@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.3](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.2...v0.1.3) (2026-03-15)
+
+
+### Features
+
+* enhance console title and update descriptions for tunnel and SSH settings ([f95c917](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/f95c917e0d2c4acae5f632662ea872c77e1d7c18))
+* reorder SSH usernames in README and update console title for tunnel mode ([de7cefd](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/de7cefd2eca6a365f481d2f2341dd4e954f98ca1))
+
 ### [0.1.2](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.1...v0.1.2) (2026-03-15)
 
 
