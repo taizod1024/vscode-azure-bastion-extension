@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.3...v0.1.4) (2026-06-06)
+
+
+### Bug Fixes
+
+* correct casing for Azure CLI commands and enhance parameter descriptions in package.json ([e82cd6b](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/e82cd6b29b3e32841b3d2290e13f0dc7abbc1e71))
+
 ### [0.1.3](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.2...v0.1.3) (2026-03-15)
 
 
