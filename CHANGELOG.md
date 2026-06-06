@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.4...v0.1.5) (2026-06-06)
+
+
+### Bug Fixes
+
+* add peer dependencies to package-lock.json for better compatibility ([82e2b5c](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/82e2b5ccb355d342e4b3985925d7ce640fbda30d))
+
 ### [0.1.4](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.3...v0.1.4) (2026-06-06)
 
 
