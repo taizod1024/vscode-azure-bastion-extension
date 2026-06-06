@@ -140,7 +140,7 @@ if ($Mode -eq "tunnel") {
 
     [System.Console]::Title = "localhost -> $($HostName)"
     
-    az network Bastion tunnel `
+    az network bastion tunnel `
         --name $BastionName `
         --resource-group $BastionResourceGroup `
         --target-resource-id $TargetVmResourceId `
@@ -160,7 +160,7 @@ elseif ($Mode -eq "ssh") {
     # Execute Bastion SSH command
     Write-Log "Establishing SSH connection..."
     
-    az network Bastion ssh `
+    az network bastion ssh `
         --name $BastionName `
         --resource-group $BastionResourceGroup `
         --target-resource-id $TargetVmResourceId `
@@ -180,7 +180,8 @@ elseif ($Mode -eq "rdp") {
     # Execute Bastion RDP command
     Write-Log "Establishing RDP connection..."
     
-    az network Bastion rdp `
+    az network bastion rdp `
+        --configure `
         --name $BastionName `
         --resource-group $BastionResourceGroup `
         --target-resource-id $TargetVmResourceId

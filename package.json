@@ -1,5 +1,5 @@
 {
-  "version": "0.0.3",
+  "version": "0.1.3",
   "name": "azure-bastion",
   "displayName": "Azure Bastion Extension",
   "description": "A VS Code extension for Azure Bastion",
@@ -43,43 +43,43 @@
       "properties": {
         "azure-bastion.subscriptionId": {
           "type": "string",
-          "description": "Azure Subscription ID"
+          "description": "Azure Subscription ID. Example: 11111111-2222-3333-4444-555555555555"
         },
         "azure-bastion.bastionName": {
           "type": "string",
-          "description": "Name of the Azure Bastion resource"
+          "description": "Name of the Azure Bastion resource. Example: my-bastion-prod"
         },
         "azure-bastion.bastionResourceGroup": {
           "type": "string",
-          "description": "Resource group containing the Bastion resource"
+          "description": "Resource group containing the Bastion resource. Example: rg-network-prod-jpe"
         },
         "azure-bastion.targetVmResourceId": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "List of Resource IDs of target VMs"
+          "description": "List of Resource IDs of target VMs. Example: /subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-app-prod-jpe/providers/Microsoft.Compute/virtualMachines/vm-web-01"
         },
         "azure-bastion.tunnel.remotePort": {
           "type": "array",
           "items": {
             "type": "integer"
           },
-          "description": "List of remote ports on the target VMs for Tunnel. For SSH and RDP, set to 0."
+          "description": "List of remote ports on the target VMs for Tunnel. Example: 22 (SSH), 3389 (RDP). For SSH and RDP modes, set to 0."
         },
         "azure-bastion.tunnel.localPort": {
           "type": "array",
           "items": {
             "type": "integer"
           },
-          "description": "List of local ports to bind the tunnel to for Tunnel. For SSH and RDP, set to 0."
+          "description": "List of local ports to bind the tunnel to for Tunnel. Example: 60022, 63389. For SSH and RDP modes, set to 0."
         },
         "azure-bastion.ssh.username": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "List of usernames for SSH. For Tunnel and RDP, set to empty string."
+          "description": "List of usernames for SSH. Example: azureuser. For Tunnel and RDP modes, set to empty string."
         }
       }
     }
