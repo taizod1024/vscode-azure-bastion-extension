@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.6](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.5...v0.1.6) (2026-06-07)
+
+
+### Bug Fixes
+
+* update exit prompts to wait 10 seconds instead of requiring user input ([97bd1a7](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/97bd1a79a3bf122e46286323f0f6dfe37c32e631))
+
 ### [0.1.5](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.4...v0.1.5) (2026-06-06)
 
 
