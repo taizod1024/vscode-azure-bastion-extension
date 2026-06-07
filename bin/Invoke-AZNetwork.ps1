@@ -83,16 +83,16 @@ elseif ($Mode -eq "ssh") {
 if ($Mode -eq "tunnel") {
     if (-not $RemotePort -or -not $LocalPort) {
         Write-ErrorLog "Tunnel mode requires RemotePort and LocalPort parameters"
-        Write-WarnLog "Press Enter to exit..."
-        Read-Host
+        Write-WarnLog "Exiting in 10 seconds..."
+        Start-Sleep -Seconds 10
         exit 1
     }
 }
 elseif ($Mode -eq "ssh") {
     if (-not $Username) {
         Write-ErrorLog "SSH mode requires Username parameter"
-        Write-WarnLog "Press Enter to exit..."
-        Read-Host
+        Write-WarnLog "Exiting in 10 seconds..."
+        Start-Sleep -Seconds 10
         exit 1
     }
 }
@@ -102,8 +102,8 @@ Write-Log "Checking if Azure CLI is installed..."
 $azCommand = Get-Command az -ErrorAction SilentlyContinue
 if (-not $azCommand) {
     Write-ErrorLog "Azure CLI (az) is not installed or not found in PATH"
-    Write-WarnLog "Press Enter to exit..."
-    Read-Host
+    Write-WarnLog "Exiting in 10 seconds..."
+    Start-Sleep -Seconds 10
     exit 1
 
 }
@@ -115,8 +115,8 @@ $null | az login --output none
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to login to Azure (exit code: $LASTEXITCODE)"
-    Write-WarnLog "Press Enter to exit..."
-    Read-Host
+    Write-WarnLog "Exiting in 10 seconds..."
+    Start-Sleep -Seconds 10
     exit 1
 }
 Write-Log "Azure login successful"
@@ -127,8 +127,8 @@ az account set --subscription $SubscriptionId
 
 if ($LASTEXITCODE -ne 0) {
     Write-ErrorLog "Failed to set subscription (exit code: $LASTEXITCODE)"
-    Write-WarnLog "Press Enter to exit..."
-    Read-Host
+    Write-WarnLog "Exiting in 10 seconds..."
+    Start-Sleep -Seconds 10
     exit 1
 }
 Write-Log "Subscription set successfully"
@@ -149,8 +149,8 @@ if ($Mode -eq "tunnel") {
     
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorLog "Failed to create Bastion Tunnel (exit code: $LASTEXITCODE)"
-        Write-WarnLog "Press Enter to exit..."
-        Read-Host
+        Write-WarnLog "Exiting in 10 seconds..."
+        Start-Sleep -Seconds 10
         exit 1
     }
     
@@ -169,8 +169,8 @@ elseif ($Mode -eq "ssh") {
     
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorLog "Failed to establish SSH connection (exit code: $LASTEXITCODE)"
-        Write-WarnLog "Press Enter to exit..."
-        Read-Host
+        Write-WarnLog "Exiting in 10 seconds..."
+        Start-Sleep -Seconds 10
         exit 1
     }
     
@@ -188,8 +188,8 @@ elseif ($Mode -eq "rdp") {
     
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorLog "Failed to establish RDP connection (exit code: $LASTEXITCODE)"
-        Write-WarnLog "Press Enter to exit..."
-        Read-Host
+        Write-WarnLog "Exiting in 10 seconds..."
+        Start-Sleep -Seconds 10
         exit 1
     }
     
