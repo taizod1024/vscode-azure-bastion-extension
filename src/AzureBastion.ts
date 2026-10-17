@@ -65,7 +65,7 @@ class AzureBastion {
     context.subscriptions.push(
       vscode.commands.registerCommand(`${this.appId}.${this.commandInvokeAZNetwork}`, async () => {
         try {
-          await this.invokeAZNetWorkAsync();
+          await vscode.commands.executeCommand(`${this.appId}.focusExplorer`);
         } catch (reason) {
           this.channel.appendLine(`ERROR: ${reason}`);
           vscode.window.showErrorMessage(`${reason}`);
@@ -75,9 +75,9 @@ class AzureBastion {
 
     // Create status bar button
     this.statusBarButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000);
-    this.statusBarButton.command = `${this.appId}.${this.commandInvokeAZNetwork}`;
+    this.statusBarButton.command = `${this.appId}.focusExplorer`;
     this.statusBarButton.text = "$(debug-disconnect) Azure Bastion";
-    this.statusBarButton.tooltip = "Click to establish Azure Bastion";
+    this.statusBarButton.tooltip = "Open Azure Bastion resources";
     this.statusBarButton.show();
     context.subscriptions.push(this.statusBarButton);
   }

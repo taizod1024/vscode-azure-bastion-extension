@@ -26,63 +26,86 @@
     "commands": [
       {
         "command": "azure-bastion.invokeAZNetWork",
-        "title": "Azure Bastion - Tunnel Connection"
+        "title": "Azure Bastion: Open Resources"
+      },
+      {
+        "command": "azure-bastion.refreshResources",
+        "title": "Azure Bastion: Refresh Resources"
+      },
+      {
+        "command": "azure-bastion.signIn",
+        "title": "Azure Bastion: Sign In to Azure"
+      },
+      {
+        "command": "azure-bastion.connectVm",
+        "title": "Azure Bastion: Connect to VM"
+      },
+      {
+        "command": "azure-bastion.configureVm",
+        "title": "Azure Bastion: Configure VM"
+      },
+      {
+        "command": "azure-bastion.focusExplorer",
+        "title": "Azure Bastion: Open Resources"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "azureBastion",
+          "title": "Azure Bastion",
+          "icon": "images/azure-bastion-view.svg"
+        }
+      ]
+    },
+    "views": {
+      "azureBastion": [
+        {
+          "id": "azureBastion.resources",
+          "name": "Azure Resources"
+        }
+      ]
+    },
     "menus": {
       "commandPalette": [
         {
           "command": "azure-bastion.invokeAZNetWork",
           "when": "true"
+        },
+        {
+          "command": "azure-bastion.refreshResources",
+          "when": "true"
+        },
+        {
+          "command": "azure-bastion.signIn",
+          "when": "true"
+        },
+        {
+          "command": "azure-bastion.focusExplorer",
+          "when": "true"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "azure-bastion.refreshResources",
+          "when": "view == azureBastion.resources",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "azure-bastion.connectVm",
+          "when": "view == azureBastion.resources && viewItem == azureBastionVm",
+          "group": "inline"
+        },
+        {
+          "command": "azure-bastion.configureVm",
+          "when": "view == azureBastion.resources && viewItem == azureBastionVm",
+          "group": "1"
         }
       ]
     },
-    "keybindings": [],
-    "configuration": {
-      "title": "Azure Bastion",
-      "properties": {
-        "azure-bastion.subscriptionId": {
-          "type": "string",
-          "description": "Azure Subscription ID. Example: 11111111-2222-3333-4444-555555555555"
-        },
-        "azure-bastion.bastionName": {
-          "type": "string",
-          "description": "Name of the Azure Bastion resource. Example: my-bastion-prod"
-        },
-        "azure-bastion.bastionResourceGroup": {
-          "type": "string",
-          "description": "Resource group containing the Bastion resource. Example: rg-network-prod-jpe"
-        },
-        "azure-bastion.targetVmResourceId": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of Resource IDs of target VMs. Example: /subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/rg-app-prod-jpe/providers/Microsoft.Compute/virtualMachines/vm-web-01"
-        },
-        "azure-bastion.tunnel.remotePort": {
-          "type": "array",
-          "items": {
-            "type": "integer"
-          },
-          "description": "List of remote ports on the target VMs for Tunnel. Example: 22 (SSH), 3389 (RDP). For SSH and RDP modes, set to 0."
-        },
-        "azure-bastion.tunnel.localPort": {
-          "type": "array",
-          "items": {
-            "type": "integer"
-          },
-          "description": "List of local ports to bind the tunnel to for Tunnel. Example: 60022, 63389. For SSH and RDP modes, set to 0."
-        },
-        "azure-bastion.ssh.username": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of usernames for SSH. Example: azureuser. For Tunnel and RDP modes, set to empty string."
-        }
-      }
-    }
+    "keybindings": []
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
