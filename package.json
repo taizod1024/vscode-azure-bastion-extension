@@ -55,7 +55,7 @@
       {
         "command": "azure-bastion.connectVmRdp",
         "title": "Connect via RDP",
-        "icon": "$(remote-explorer)"
+        "icon": "$(vm)"
       },
       {
         "command": "azure-bastion.configureVm",

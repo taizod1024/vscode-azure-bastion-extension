@@ -78,9 +78,8 @@ function isWindowsVm(vm: VirtualMachine): boolean {
   return /^Windows$/i.test(vm.osType || "");
 }
 
-function vmIcon(vm: VirtualMachine): string {
-  if (isWindowsVm(vm)) return "device-desktop";
-  return "terminal";
+function vmIcon(): string {
+  return "vm";
 }
 
 const stateKey = "azure-bastion.sidebar.v1";
@@ -118,7 +117,7 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
       item.tooltip = `${node.vm.id}\nPower state: ${node.vm.powerState || "Unknown"}`;
       item.contextValue = isWindowsVm(node.vm) ? "azureBastionVmWindows" : "azureBastionVmOther";
       const iconColor = node.vm.powerState === "running" ? "charts.blue" : "disabledForeground";
-      item.iconPath = new vscode.ThemeIcon(vmIcon(node.vm), new vscode.ThemeColor(iconColor));
+      item.iconPath = new vscode.ThemeIcon(vmIcon(), new vscode.ThemeColor(iconColor));
       return item;
     }
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
