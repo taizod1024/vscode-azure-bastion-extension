@@ -115,6 +115,7 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
     }
     if (node.kind === "vm") {
       const item = new vscode.TreeItem(node.vm.name, vscode.TreeItemCollapsibleState.None);
+      item.description = node.vm.powerState || "Unknown";
       item.tooltip = `${node.vm.id}\nPower state: ${node.vm.powerState || "Unknown"}`;
       item.contextValue = isWindowsVm(node.vm) ? "azureBastionVmWindows" : "azureBastionVmOther";
       const iconColor = node.vm.powerState === "running" ? "charts.blue" : "disabledForeground";
@@ -135,6 +136,11 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
 
   setChildren(node: ExplorerNode, children: ExplorerNode[]) {
     this.children.set(node, children);
+  }
+
+  updateChildren(node: ExplorerNode, children: ExplorerNode[]) {
+    this.children.set(node, children);
+    this.changed.fire(node);
   }
 
   dispose() {
@@ -337,10 +343,12 @@ class AzureResources {
     return [...found.values()].sort((left, right) => left.name.localeCompare(right.name));
   }
 
-  private async loadForSubscription(token: string, subscription: AzureSubscription): Promise<{ bastions: BastionHost[]; vms: VirtualMachine[] }> {
+  private async loadForSubscription(token: string, subscription: AzureSubscription, includeVms = true): Promise<{ bastions: BastionHost[]; vms: VirtualMachine[] }> {
     const [bastionResources, vmResources] = await Promise.all([
       this.armGet<ArmResource>(token, `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Network/bastionHosts?api-version=2024-05-01`),
-      this.armGet<ArmResource>(token, `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Compute/virtualMachines?api-version=2024-03-01`),
+      includeVms
+        ? this.armGet<ArmResource>(token, `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Compute/virtualMachines?api-version=2024-03-01`)
+        : Promise.resolve([] as ArmResource[]),
     ]);
 
     const bastions: BastionHost[] = bastionResources
@@ -418,26 +426,23 @@ class AzureResources {
     }
   }
 
-  async discover(): Promise<{ subscriptions: AzureSubscription[]; machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> }> {
+  async refreshVmPowerState(vm: VirtualMachine): Promise<string | undefined> {
     const session = await this.getSession(false);
     if (!session) throw new Error("Sign in to Azure from the Azure Resources view, then refresh this list.");
-    const subscriptions = await this.loadSubscriptions(session.accessToken);
-    const resources = await this.mapLimit(subscriptions, 3, async subscription => {
-      try {
-        return await this.loadForSubscription(this.tokenFor(`/subscriptions/${subscription.id}`, session.accessToken), subscription);
-      } catch (error) {
-        this.log.appendLine(`WARN: Could not load resources for subscription ${subscription.name}: ${error}`);
-        return { bastions: [] as BastionHost[], vms: [] as VirtualMachine[] };
-      }
-    });
-    const bastions = resources.flatMap(resource => resource.bastions);
-    const vms = resources.flatMap(resource => resource.vms);
-    const reachableByBastionVnet = await this.loadPeeredVnets(session.accessToken, bastions);
+    return this.getVmPowerState(session.accessToken, vm);
+  }
+
+  private async discoverMachines(
+    token: string,
+    vms: VirtualMachine[],
+    bastions: BastionHost[],
+  ): Promise<Array<{ vm: VirtualMachine; bastions: BastionHost[] }>> {
+    const reachableByBastionVnet = await this.loadPeeredVnets(token, bastions);
     const settings = await this.getState();
     const machines = await this.mapLimit(vms, 5, async vm => {
       let vmVnets: string[] = [];
       try {
-        vmVnets = await this.getVmVnets(session.accessToken, vm);
+        vmVnets = await this.getVmVnets(token, vm);
       } catch (error) {
         this.log.appendLine(`WARN: Could not inspect VM network interfaces for ${vm.id}: ${error}`);
       }
@@ -458,10 +463,51 @@ class AzureResources {
         }
       }
       if (matchingBastions.length === 0) return { vm, bastions: matchingBastions };
-      const powerState = await this.getVmPowerState(session.accessToken, vm);
+      const powerState = await this.getVmPowerState(token, vm);
       return { vm: { ...vm, powerState }, bastions: matchingBastions };
     });
-    return { subscriptions, machines: machines.filter(machine => machine.bastions.length > 0) };
+    return machines.filter(machine => machine.bastions.length > 0);
+  }
+
+  async discover(): Promise<{ subscriptions: AzureSubscription[]; machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> }> {
+    const session = await this.getSession(false);
+    if (!session) throw new Error("Sign in to Azure from the Azure Resources view, then refresh this list.");
+    const subscriptions = await this.loadSubscriptions(session.accessToken);
+    const resources = await this.mapLimit(subscriptions, 3, async subscription => {
+      try {
+        return await this.loadForSubscription(this.tokenFor(`/subscriptions/${subscription.id}`, session.accessToken), subscription);
+      } catch (error) {
+        this.log.appendLine(`WARN: Could not load resources for subscription ${subscription.name}: ${error}`);
+        return { bastions: [] as BastionHost[], vms: [] as VirtualMachine[] };
+      }
+    });
+    const bastions = resources.flatMap(resource => resource.bastions);
+    const vms = resources.flatMap(resource => resource.vms);
+    const machines = await this.discoverMachines(session.accessToken, vms, bastions);
+    return { subscriptions, machines };
+  }
+
+  async discoverSubscription(subscriptionId: string): Promise<{ subscription: AzureSubscription; machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> }> {
+    const session = await this.getSession(false);
+    if (!session) throw new Error("Sign in to Azure from the Azure Resources view, then refresh this list.");
+    const subscriptions = await this.loadSubscriptions(session.accessToken);
+    const subscription = subscriptions.find(candidate => candidate.id.toLowerCase() === subscriptionId.toLowerCase());
+    if (!subscription) throw new Error(`Subscription ${subscriptionId} is no longer available or is not signed in.`);
+
+    const resources = await this.mapLimit(subscriptions, 3, async candidate => {
+      const includeVms = candidate.id.toLowerCase() === subscription.id.toLowerCase();
+      try {
+        return await this.loadForSubscription(this.tokenFor(`/subscriptions/${candidate.id}`, session.accessToken), candidate, includeVms);
+      } catch (error) {
+        if (includeVms) throw error;
+        this.log.appendLine(`WARN: Could not load Bastion hosts for subscription ${candidate.name}: ${error}`);
+        return { bastions: [] as BastionHost[], vms: [] as VirtualMachine[] };
+      }
+    });
+    const bastions = resources.flatMap(resource => resource.bastions);
+    const vms = resources.find((_, index) => subscriptions[index].id.toLowerCase() === subscription.id.toLowerCase())?.vms || [];
+    const machines = await this.discoverMachines(session.accessToken, vms, bastions);
+    return { subscription, machines };
   }
 
   async getState(): Promise<ExplorerState> {
@@ -568,6 +614,8 @@ export class BastionExplorer {
   private readonly temporaryPropertyFiles = new Map<string, string>();
   private view: vscode.TreeView<ExplorerNode> | undefined;
   private refreshRequest = 0;
+  private isRefreshing = false;
+  private nodeRefreshInProgress: Promise<void> | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -604,7 +652,7 @@ export class BastionExplorer {
       }),
       { dispose: () => this.cleanupTemporaryPropertyFiles() },
       vscode.commands.registerCommand("azure-bastion.refreshResources", async () => this.refresh()),
-      vscode.commands.registerCommand("azure-bastion.refreshNode", async () => this.refresh()),
+      vscode.commands.registerCommand("azure-bastion.refreshNode", async (node?: ExplorerNode) => this.refreshNode(node)),
       vscode.commands.registerCommand("azure-bastion.signIn", async () => this.signIn()),
       vscode.commands.registerCommand("azure-bastion.connectVmTunnel", async (vm?: string | ExplorerNode) => this.connectVm(vm, "tunnel")),
       vscode.commands.registerCommand("azure-bastion.connectVmSsh", async (vm?: string | ExplorerNode) => this.connectVm(vm, "ssh")),
@@ -638,9 +686,12 @@ export class BastionExplorer {
 
   private async refresh(showErrors = true): Promise<void> {
     const request = ++this.refreshRequest;
+    this.isRefreshing = true;
     this.machines = [];
     this.tree.refresh([{ kind: "message", label: "Refreshing Azure resources..." }]);
     try {
+      if (this.nodeRefreshInProgress) await this.nodeRefreshInProgress;
+      if (request !== this.refreshRequest) return;
       const { subscriptions, machines } = await this.resources.discover();
       if (request !== this.refreshRequest) return;
       await this.resources.saveSubscriptions(subscriptions);
@@ -656,16 +707,7 @@ export class BastionExplorer {
       }));
       for (const root of roots) {
         if (root.kind !== "subscription") continue;
-        this.tree.setChildren(
-          root,
-          machines
-            .filter(machine => machine.vm.subscriptionId === root.subscription.id)
-            .sort((left, right) => left.vm.name.localeCompare(right.vm.name))
-            .map(machine => ({ kind: "vm", ...machine })),
-        );
-        if (this.tree.getChildren(root).length === 0) {
-          this.tree.setChildren(root, [{ kind: "message", label: "No Bastion-reachable virtual machines", command: "azure-bastion.refreshResources" }]);
-        }
+        this.tree.setChildren(root, this.childrenForSubscription(root.subscription.id, machines));
       }
       this.tree.refresh(roots);
       this.log.appendLine(`Azure resources refreshed: ${subscriptions.length} subscription(s), ${machines.length} Bastion-reachable VM(s).`);
@@ -677,6 +719,78 @@ export class BastionExplorer {
       const command = label === "Sign in to Azure" ? "azure-bastion.signIn" : "azure-bastion.refreshResources";
       this.tree.refresh([{ kind: "message", label, command }]);
       if (showErrors) void vscode.window.showErrorMessage(`Azure resource refresh failed: ${error}`);
+    } finally {
+      if (request === this.refreshRequest) this.isRefreshing = false;
+    }
+  }
+
+  private childrenForSubscription(subscriptionId: string, machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }>): ExplorerNode[] {
+    const children: ExplorerNode[] = machines
+      .filter(machine => machine.vm.subscriptionId.toLowerCase() === subscriptionId.toLowerCase())
+      .sort((left, right) => left.vm.name.localeCompare(right.vm.name))
+      .map(machine => ({ kind: "vm", ...machine }));
+    return children.length > 0
+      ? children
+      : [{ kind: "message", label: "No Bastion-reachable virtual machines", command: "azure-bastion.refreshResources" }];
+  }
+
+  private async refreshNode(node?: ExplorerNode): Promise<void> {
+    if ((node?.kind !== "subscription" && node?.kind !== "vm") || this.isRefreshing || this.nodeRefreshInProgress) return;
+    const request = this.refreshRequest;
+    const operation = this.refreshNodeData(node, request);
+    this.nodeRefreshInProgress = operation;
+    try {
+      await operation;
+    } finally {
+      if (this.nodeRefreshInProgress === operation) this.nodeRefreshInProgress = undefined;
+    }
+  }
+
+  private async refreshNodeData(node: Extract<ExplorerNode, { kind: "subscription" | "vm" }>, request: number): Promise<void> {
+    try {
+      if (node.kind === "subscription") {
+        const refreshed = await this.resources.discoverSubscription(node.subscription.id);
+        if (request !== this.refreshRequest) return;
+        const root = this.tree.getChildren().find(
+          (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
+            candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === node.subscription.id.toLowerCase(),
+        );
+        if (!root) return;
+        root.subscription = refreshed.subscription;
+        this.machines = [
+          ...this.machines.filter(machine => machine.vm.subscriptionId.toLowerCase() !== root.subscription.id.toLowerCase()),
+          ...refreshed.machines,
+        ];
+        this.tree.updateChildren(root, this.childrenForSubscription(root.subscription.id, this.machines));
+        this.log.appendLine(`Subscription ${root.subscription.name} refreshed: ${refreshed.machines.length} Bastion-reachable VM(s).`);
+        return;
+      }
+
+      const powerState = await this.resources.refreshVmPowerState(node.vm);
+      if (request !== this.refreshRequest) return;
+      const root = this.tree.getChildren().find(
+        (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
+          candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === node.vm.subscriptionId.toLowerCase(),
+      );
+      if (!root) return;
+      const children = this.tree.getChildren(root);
+      const vmIndex = children.findIndex(child => child.kind === "vm" && child.vm.id.toLowerCase() === node.vm.id.toLowerCase());
+      const vmNode = children[vmIndex];
+      if (vmNode?.kind !== "vm") return;
+      const updatedVm = { ...vmNode.vm, powerState };
+      children[vmIndex] = { ...vmNode, vm: updatedVm };
+      this.machines = this.machines.map(machine =>
+        machine.vm.id.toLowerCase() === updatedVm.id.toLowerCase()
+          ? { ...machine, vm: updatedVm }
+          : machine,
+      );
+      this.tree.updateChildren(root, children);
+      this.log.appendLine(`VM ${updatedVm.name} power state refreshed: ${powerState || "Unknown"}.`);
+    } catch (error) {
+      if (request !== this.refreshRequest) return;
+      const message = `Could not refresh ${node.kind === "vm" ? `VM ${node.vm.name}` : `subscription ${node.subscription.name}`}: ${error}`;
+      this.log.appendLine(`ERROR: ${message}`);
+      void vscode.window.showErrorMessage(message);
     }
   }
 
