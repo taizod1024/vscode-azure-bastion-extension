@@ -7,8 +7,8 @@ A VS Code extension for Azure Bastion
 ## Features
 
 - Easily create connections through Azure Bastion directly from VS Code (Tunnel, SSH, RDP)
-- Browse Azure subscriptions and Bastion-reachable virtual machines in the Azure Bastion sidebar
-- Refresh resources and select a Bastion when more than one can reach a VM
+- Browse Azure subscriptions and Bastion-reachable virtual machines, including their current power state, in the Azure Bastion sidebar
+- Refresh resources and VM power states, and select a Bastion when more than one can reach a VM
 - View resource properties as JSON and open subscriptions or VMs in the built-in or external browser from the context menu
 - Save each VM's SSH username and tunnel ports in extension storage instead of settings
 - Tunnel: Establish port forwarding for direct access
@@ -45,7 +45,7 @@ Azure sign-in for resource discovery is provided by VS Code's built-in Microsoft
 
 On first activation, the previous `azure-bastion.*` settings are migrated to extension storage and the migrated global/workspace setting values are removed. No connection targets need to be configured in Settings.
 
-Resource discovery requires permission to read subscriptions, virtual machines, network interfaces, Bastion hosts, and VNet peerings. VM reachability across more complex hub-and-spoke or transitive network topologies may not be detected automatically.
+Resource discovery requires permission to read subscriptions, virtual machines and their instance views, network interfaces, Bastion hosts, and VNet peerings. VM reachability across more complex hub-and-spoke or transitive network topologies may not be detected automatically.
 
 ## Usage
 
