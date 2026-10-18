@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.11](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.10...v0.1.11) (2026-10-18)
+
+
+### Features
+
+* リソースのリフレッシュ機能を改善し、VMのパワーステート更新を追加 ([97b30af](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/97b30af5ad6788dbc38ec041a6a704bb3c283e46))
+
 ### [0.1.10](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.9...v0.1.10) (2026-10-18)
 
 
