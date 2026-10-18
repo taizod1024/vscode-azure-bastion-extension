@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.13](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.12...v0.1.13) (2026-10-18)
+
+
+### Features
+
+* VMアイコンの表示を改善し、Windows VMにデスクトップアイコンを使用するよう変更 ([d17cb73](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/d17cb73e5837e64db1c9f3b51531499a20e18fe8))
+
 ### [0.1.12](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.11...v0.1.12) (2026-10-18)
 
 
