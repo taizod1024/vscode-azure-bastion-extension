@@ -79,9 +79,8 @@ function isWindowsVm(vm: VirtualMachine): boolean {
 }
 
 function vmIcon(vm: VirtualMachine): string {
-  if (isWindowsVm(vm)) return "window";
-  if (/^Linux$/i.test(vm.osType || "")) return "terminal-linux";
-  return "vm";
+  if (isWindowsVm(vm)) return "device-desktop";
+  return "terminal";
 }
 
 const stateKey = "azure-bastion.sidebar.v1";
