@@ -70,7 +70,7 @@ interface NetworkPeeringResource {
   };
 }
 
-type ExplorerNode = { kind: "subscription"; subscription: AzureSubscription } | { kind: "vm"; vm: VirtualMachine; bastions: BastionHost[] } | { kind: "message"; label: string; command?: string };
+type ExplorerNode = { kind: "subscription"; subscription: AzureSubscription } | { kind: "vm"; vm: VirtualMachine; bastions: BastionHost[]; refreshing?: "busy" | "failed" } | { kind: "message"; label: string; command?: string };
 
 type ConnectionMode = "tunnel" | "ssh" | "rdp";
 
@@ -115,7 +115,7 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
     }
     if (node.kind === "vm") {
       const item = new vscode.TreeItem(node.vm.name, vscode.TreeItemCollapsibleState.None);
-      item.description = node.vm.powerState || "Unknown";
+      item.description = node.refreshing === "busy" ? "Refreshing..." : node.refreshing === "failed" ? "Refresh failed" : node.vm.powerState || "Unknown";
       item.tooltip = `${node.vm.id}\nPower state: ${node.vm.powerState || "Unknown"}`;
       item.contextValue = isWindowsVm(node.vm) ? "azureBastionVmWindows" : "azureBastionVmOther";
       const iconColor = node.vm.powerState === "running" ? "charts.blue" : "disabledForeground";
@@ -731,7 +731,7 @@ export class BastionExplorer {
       .map(machine => ({ kind: "vm", ...machine }));
     return children.length > 0
       ? children
-      : [{ kind: "message", label: "No Bastion-reachable virtual machines", command: "azure-bastion.refreshResources" }];
+      : [{ kind: "message", label: "No Bastion-reachable virtual machines" }];
   }
 
   private async refreshNode(node?: ExplorerNode): Promise<void> {
@@ -749,13 +749,20 @@ export class BastionExplorer {
   private async refreshNodeData(node: Extract<ExplorerNode, { kind: "subscription" | "vm" }>, request: number): Promise<void> {
     try {
       if (node.kind === "subscription") {
-        const refreshed = await this.resources.discoverSubscription(node.subscription.id);
-        if (request !== this.refreshRequest) return;
         const root = this.tree.getChildren().find(
           (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
             candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === node.subscription.id.toLowerCase(),
         );
         if (!root) return;
+        this.tree.updateChildren(root, [{ kind: "message", label: "Refreshing Azure resources..." }]);
+        let refreshed: Awaited<ReturnType<AzureResources["discoverSubscription"]>>;
+        try {
+          refreshed = await this.resources.discoverSubscription(node.subscription.id);
+        } catch (error) {
+          if (request === this.refreshRequest) this.tree.updateChildren(root, [{ kind: "message", label: "Refresh failed - see error message" }]);
+          throw error;
+        }
+        if (request !== this.refreshRequest) return;
         root.subscription = refreshed.subscription;
         this.machines = [
           ...this.machines.filter(machine => machine.vm.subscriptionId.toLowerCase() !== root.subscription.id.toLowerCase()),
@@ -766,19 +773,34 @@ export class BastionExplorer {
         return;
       }
 
-      const powerState = await this.resources.refreshVmPowerState(node.vm);
-      if (request !== this.refreshRequest) return;
       const root = this.tree.getChildren().find(
         (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
           candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === node.vm.subscriptionId.toLowerCase(),
       );
       if (!root) return;
+      const setRefreshing = (refreshing?: "busy" | "failed") => {
+        const siblings = this.tree.getChildren(root);
+        const index = siblings.findIndex(child => child.kind === "vm" && child.vm.id.toLowerCase() === node.vm.id.toLowerCase());
+        const current = siblings[index];
+        if (current?.kind !== "vm") return;
+        siblings[index] = { ...current, refreshing };
+        this.tree.updateChildren(root, siblings);
+      };
+      setRefreshing("busy");
+      let powerState: string | undefined;
+      try {
+        powerState = await this.resources.refreshVmPowerState(node.vm);
+      } catch (error) {
+        if (request === this.refreshRequest) setRefreshing("failed");
+        throw error;
+      }
+      if (request !== this.refreshRequest) return;
       const children = this.tree.getChildren(root);
       const vmIndex = children.findIndex(child => child.kind === "vm" && child.vm.id.toLowerCase() === node.vm.id.toLowerCase());
       const vmNode = children[vmIndex];
       if (vmNode?.kind !== "vm") return;
       const updatedVm = { ...vmNode.vm, powerState };
-      children[vmIndex] = { ...vmNode, vm: updatedVm };
+      children[vmIndex] = { ...vmNode, vm: updatedVm, refreshing: undefined };
       this.machines = this.machines.map(machine =>
         machine.vm.id.toLowerCase() === updatedVm.id.toLowerCase()
           ? { ...machine, vm: updatedVm }
@@ -811,7 +833,8 @@ export class BastionExplorer {
     try {
       const json = await this.resources.getResourceJson(id, apiVersion);
       const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "azure-bastion-properties-"));
-      temporaryFile = path.join(temporaryDirectory, "resource.json");
+      const resourceName = (node.kind === "vm" ? node.vm.name : node.subscription.name).replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "resource";
+      temporaryFile = path.join(temporaryDirectory, `${resourceName}.json`);
       this.temporaryPropertyFiles.set(temporaryFile, temporaryDirectory);
       fs.writeFileSync(temporaryFile, JSON.stringify(json, null, 2), "utf8");
       const document = await vscode.workspace.openTextDocument(vscode.Uri.file(temporaryFile));
