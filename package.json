@@ -73,7 +73,7 @@
       {
         "command": "azure-bastion.openInPortal",
         "title": "Open in Portal",
-        "icon": "$(browser)"
+        "icon": "$(globe)"
       },
       {
         "command": "azure-bastion.openInPortalExternal",
