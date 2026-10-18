@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.8](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.7...v0.1.8) (2026-10-18)
+
+
+### Features
+
+* Azure Bastion extensionのリソース表示機能を改善し、ポータルオープン方法を追加 ([da50670](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/da5067074cfe8b8fc092a763649e3d18c2f8805f))
+
 ### [0.1.7](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.6...v0.1.7) (2026-10-18)
 
 
