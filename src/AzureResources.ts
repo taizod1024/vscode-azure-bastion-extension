@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { execFile } from "child_process";
 import * as https from "https";
+import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { URL } from "url";
 
@@ -21,6 +23,7 @@ interface BastionHost {
 interface VirtualMachine {
   id: string;
   name: string;
+  osType?: string;
   subscriptionId: string;
   resourceGroup: string;
   networkInterfaceIds: string[];
@@ -48,6 +51,7 @@ interface ArmResource {
     virtualNetwork?: { id?: string };
     networkProfile?: { networkInterfaces?: Array<{ id?: string }> };
     ipConfigurationsOnSubnet?: Array<{ properties?: { subnet?: { id?: string } } }>;
+    storageProfile?: { osDisk?: { osType?: string } };
   };
   subscriptionId?: string;
   displayName?: string;
@@ -64,12 +68,23 @@ interface NetworkPeeringResource {
   };
 }
 
-type ExplorerNode =
-  | { kind: "subscription"; subscription: AzureSubscription }
-  | { kind: "vm"; vm: VirtualMachine; bastions: BastionHost[] }
-  | { kind: "message"; label: string; command: string };
+type ExplorerNode = { kind: "subscription"; subscription: AzureSubscription } | { kind: "vm"; vm: VirtualMachine; bastions: BastionHost[] } | { kind: "message"; label: string; command: string };
+
+type ConnectionMode = "tunnel" | "ssh" | "rdp";
+
+function isWindowsVm(vm: VirtualMachine): boolean {
+  return /^Windows$/i.test(vm.osType || "");
+}
+
+function vmIcon(vm: VirtualMachine): string {
+  if (isWindowsVm(vm)) return "window";
+  if (/^Linux$/i.test(vm.osType || "")) return "terminal-linux";
+  return "vm";
+}
 
 const stateKey = "azure-bastion.sidebar.v1";
+const sshBlockStart = "# azure-bastion:start (managed by the Azure Bastion extension; edits in this block are overwritten)";
+const sshBlockEnd = "# azure-bastion:end";
 const migrationKey = "azure-bastion.sidebar.migrated.v1";
 const azureResourcesExtensionId = "ms-azuretools.vscode-azureresourcegroups";
 const microsoftScopes = ["https://management.azure.com/user_impersonation"];
@@ -92,26 +107,20 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
   getTreeItem(node: ExplorerNode): vscode.TreeItem {
     if (node.kind === "subscription") {
       const item = new vscode.TreeItem(node.subscription.name, vscode.TreeItemCollapsibleState.Expanded);
-      item.description = node.subscription.id;
-      item.iconPath = new vscode.ThemeIcon("cloud");
+      item.contextValue = "azureBastionSubscription";
+      item.iconPath = new vscode.ThemeIcon("key", new vscode.ThemeColor("charts.blue"));
       return item;
     }
     if (node.kind === "vm") {
       const item = new vscode.TreeItem(node.vm.name, vscode.TreeItemCollapsibleState.None);
-      item.description = node.vm.resourceGroup;
       item.tooltip = node.vm.id;
-      item.contextValue = "azureBastionVm";
-      item.iconPath = new vscode.ThemeIcon("vm");
-      item.command = {
-        command: "azure-bastion.connectVm",
-        title: "Connect",
-        arguments: [node.vm.id],
-      };
+      item.contextValue = isWindowsVm(node.vm) ? "azureBastionVmWindows" : "azureBastionVmOther";
+      item.iconPath = new vscode.ThemeIcon(vmIcon(node.vm), new vscode.ThemeColor("charts.blue"));
       return item;
     }
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
     item.command = { command: node.command, title: node.label };
-    item.iconPath = new vscode.ThemeIcon(node.command.endsWith("signIn") ? "account" : "info");
+    item.iconPath = node.command.endsWith("signIn") ? new vscode.ThemeIcon("account") : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
     return item;
   }
 
@@ -131,7 +140,10 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
 }
 
 class AzureResources {
-  constructor(private readonly context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly log: vscode.OutputChannel,
+  ) {}
 
   private async getSession(createIfNone: boolean): Promise<vscode.AuthenticationSession | undefined> {
     const provider = vscode.extensions.getExtension(azureResourcesExtensionId);
@@ -242,6 +254,12 @@ class AzureResources {
     });
   }
 
+  async getResourceJson(resourceId: string, apiVersion: string): Promise<ArmResource> {
+    const session = await this.getSession(false);
+    if (!session) throw new Error("Sign in to Azure from the Azure Resources view, then refresh this list.");
+    return this.requestJson(this.tokenFor(resourceId, session.accessToken), `${resourceId}?api-version=${apiVersion}`);
+  }
+
   private resourceGroupFromId(id: string): string {
     return id.match(/\/resourceGroups\/([^/]+)/i)?.[1] || "";
   }
@@ -306,11 +324,7 @@ class AzureResources {
     for (const tenant of tenants) {
       if (!tenant.tenantId) continue;
       try {
-        const tenantSession = await vscode.authentication.getSession(
-          "microsoft",
-          [...microsoftScopes, `VSCODE_TENANT:${tenant.tenantId}`],
-          { silent: true },
-        );
+        const tenantSession = await vscode.authentication.getSession("microsoft", [...microsoftScopes, `VSCODE_TENANT:${tenant.tenantId}`], { silent: true });
         if (tenantSession) await collect(tenantSession.accessToken, `tenant ${tenant.tenantId}`);
         else this.log.appendLine(`Tenant ${tenant.tenantId} is not signed in; skipped. Sign in to it from the Azure Resources extension.`);
       } catch (error) {
@@ -320,19 +334,10 @@ class AzureResources {
     return [...found.values()].sort((left, right) => left.name.localeCompare(right.name));
   }
 
-  private async loadForSubscription(
-    token: string,
-    subscription: AzureSubscription,
-  ): Promise<{ bastions: BastionHost[]; vms: VirtualMachine[] }> {
+  private async loadForSubscription(token: string, subscription: AzureSubscription): Promise<{ bastions: BastionHost[]; vms: VirtualMachine[] }> {
     const [bastionResources, vmResources] = await Promise.all([
-      this.armGet<ArmResource>(
-        token,
-        `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Network/bastionHosts?api-version=2024-05-01`,
-      ),
-      this.armGet<ArmResource>(
-        token,
-        `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Compute/virtualMachines?api-version=2024-03-01`,
-      ),
+      this.armGet<ArmResource>(token, `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Network/bastionHosts?api-version=2024-05-01`),
+      this.armGet<ArmResource>(token, `/subscriptions/${encodeURIComponent(subscription.id)}/providers/Microsoft.Compute/virtualMachines?api-version=2024-03-01`),
     ]);
 
     const bastions: BastionHost[] = bastionResources
@@ -342,27 +347,19 @@ class AzureResources {
         name: resource.name as string,
         subscriptionId: this.subscriptionFromId(resource.id as string),
         resourceGroup: this.resourceGroupFromId(resource.id as string),
-        vnetIds: [
-          ...(resource.properties?.ipConfigurations || []).map(configuration =>
-            this.vnetFromSubnetId(configuration.properties?.subnet?.id),
-          ),
-          this.vnetFromSubnetId(resource.properties?.virtualNetwork?.id),
-        ].filter((id): id is string => !!id),
+        vnetIds: [...(resource.properties?.ipConfigurations || []).map(configuration => this.vnetFromSubnetId(configuration.properties?.subnet?.id)), this.vnetFromSubnetId(resource.properties?.virtualNetwork?.id)].filter((id): id is string => !!id),
       }));
     const vms: VirtualMachine[] = vmResources
       .filter(resource => resource.id && resource.name)
       .map(resource => ({
         id: resource.id as string,
         name: resource.name as string,
+        osType: resource.properties?.storageProfile?.osDisk?.osType,
         subscriptionId: this.subscriptionFromId(resource.id as string),
         resourceGroup: this.resourceGroupFromId(resource.id as string),
-        networkInterfaceIds: (resource.properties?.networkProfile?.networkInterfaces || [])
-          .map(networkInterface => networkInterface.id)
-          .filter((id): id is string => !!id),
+        networkInterfaceIds: (resource.properties?.networkProfile?.networkInterfaces || []).map(networkInterface => networkInterface.id).filter((id): id is string => !!id),
       }));
-    this.log.appendLine(
-      `Subscription ${subscription.name}: ${bastions.length} Bastion host(s) [${bastions.map(b => `${b.name} -> ${b.vnetIds.join(",") || "no vnet"}`).join("; ")}], ${vms.length} VM(s).`,
-    );
+    this.log.appendLine(`Subscription ${subscription.name}: ${bastions.length} Bastion host(s) [${bastions.map(b => `${b.name} -> ${b.vnetIds.join(",") || "no vnet"}`).join("; ")}], ${vms.length} VM(s).`);
     return { bastions, vms };
   }
 
@@ -393,9 +390,7 @@ class AzureResources {
     const results = await this.mapLimit(vm.networkInterfaceIds, 4, async id => {
       try {
         const resource = await this.requestJson(this.tokenFor(id, token), `${id}?api-version=2024-05-01`);
-        return (resource.properties?.ipConfigurations || resource.properties?.ipConfigurationsOnSubnet || [])
-          .map(configuration => this.vnetFromSubnetId(configuration.properties?.subnet?.id))
-          .filter((vnetId): vnetId is string => !!vnetId);
+        return (resource.properties?.ipConfigurations || resource.properties?.ipConfigurationsOnSubnet || []).map(configuration => this.vnetFromSubnetId(configuration.properties?.subnet?.id)).filter((vnetId): vnetId is string => !!vnetId);
       } catch (error) {
         this.log.appendLine(`WARN: Could not inspect network interface ${id}: ${error}`);
         return [];
@@ -427,19 +422,10 @@ class AzureResources {
       } catch (error) {
         this.log.appendLine(`WARN: Could not inspect VM network interfaces for ${vm.id}: ${error}`);
       }
-      const matchingBastions = bastions.filter(bastion =>
-        bastion.vnetIds.some(bastionVnet =>
-          [...(reachableByBastionVnet.get(bastionVnet) || new Set([bastionVnet]))].some(vnet => vmVnets.includes(vnet)),
-        ),
-      );
+      const matchingBastions = bastions.filter(bastion => bastion.vnetIds.some(bastionVnet => [...(reachableByBastionVnet.get(bastionVnet) || new Set([bastionVnet]))].some(vnet => vmVnets.includes(vnet))));
       const saved = settings.vmSettings[vm.id.toLowerCase()];
       if (saved?.legacyBastionName) {
-        const legacy = bastions.find(
-          bastion =>
-            bastion.name.toLowerCase() === saved.legacyBastionName?.toLowerCase() &&
-            bastion.resourceGroup.toLowerCase() === saved.legacyBastionResourceGroup?.toLowerCase() &&
-            bastion.subscriptionId.toLowerCase() === saved.legacyBastionSubscriptionId?.toLowerCase(),
-        );
+        const legacy = bastions.find(bastion => bastion.name.toLowerCase() === saved.legacyBastionName?.toLowerCase() && bastion.resourceGroup.toLowerCase() === saved.legacyBastionResourceGroup?.toLowerCase() && bastion.subscriptionId.toLowerCase() === saved.legacyBastionSubscriptionId?.toLowerCase());
         if (legacy && !matchingBastions.some(bastion => bastion.id.toLowerCase() === legacy.id.toLowerCase())) {
           matchingBastions.push(legacy);
         } else if (!legacy && matchingBastions.length === 0) {
@@ -480,6 +466,36 @@ class AzureResources {
     const state = await this.getState();
     state.vmSettings[vmId.toLowerCase()] = vmSettings;
     await this.context.globalState.update(stateKey, state);
+    await this.syncSshConfig();
+  }
+
+  get sshConfigPath(): string {
+    return path.join(os.homedir(), ".ssh", "config");
+  }
+
+  /** write the managed Host block of ~/.ssh/config from the saved VM settings */
+  async syncSshConfig(): Promise<void> {
+    try {
+      const state = await this.getState();
+      const entries = Object.entries(state.vmSettings).filter(([, settings]) => settings.localPort);
+      const names = entries.map(([id]) => id.split("/").pop() || id);
+      const lines = entries.flatMap(([id, settings], index) => {
+        const name = names.filter(candidate => candidate === names[index]).length > 1 ? `${names[index]}-${this.resourceGroupFromId(id)}` : names[index];
+        return [`Host ${name}`, "  HostName localhost", `  Port ${settings.localPort}`, ...(settings.username && /^[\w.@-]+$/.test(settings.username) ? [`  User ${settings.username}`] : []), `  HostKeyAlias ${name}`];
+      });
+      const block = lines.length > 0 ? `${sshBlockStart}\n${lines.join("\n")}\n${sshBlockEnd}\n` : "";
+      const existing = fs.existsSync(this.sshConfigPath) ? fs.readFileSync(this.sshConfigPath, "utf8") : "";
+      const pattern = /# azure-bastion:start[^\n]*\r?\n[\s\S]*?# azure-bastion:end[^\n]*(\r?\n)?/;
+      let next: string;
+      if (pattern.test(existing)) next = existing.replace(pattern, () => block);
+      else if (block) next = existing + (existing && !existing.endsWith("\n") ? "\n" : "") + (existing ? "\n" : "") + block;
+      else return;
+      if (next === existing) return;
+      fs.mkdirSync(path.dirname(this.sshConfigPath), { recursive: true });
+      fs.writeFileSync(this.sshConfigPath, next, "utf8");
+    } catch (error) {
+      this.log.appendLine(`ERROR: Could not update ${this.sshConfigPath}: ${error}`);
+    }
   }
 
   async migrateLegacySettings(): Promise<void> {
@@ -509,15 +525,7 @@ class AzureResources {
       }
     });
     await this.context.globalState.update(stateKey, state);
-    const legacySettings = [
-      "subscriptionId",
-      "bastionName",
-      "bastionResourceGroup",
-      "targetVmResourceId",
-      "tunnel.remotePort",
-      "tunnel.localPort",
-      "ssh.username",
-    ];
+    const legacySettings = ["subscriptionId", "bastionName", "bastionResourceGroup", "targetVmResourceId", "tunnel.remotePort", "tunnel.localPort", "ssh.username"];
     for (const setting of legacySettings) {
       const inspected = config.inspect(setting);
       if (inspected?.globalValue !== undefined) {
@@ -538,7 +546,10 @@ export class BastionExplorer {
   private machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> = [];
   private view: vscode.TreeView<ExplorerNode> | undefined;
 
-  constructor(private readonly context: vscode.ExtensionContext, private readonly log: vscode.OutputChannel) {
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly log: vscode.OutputChannel,
+  ) {
     this.resources = new AzureResources(context, log);
   }
 
@@ -546,10 +557,7 @@ export class BastionExplorer {
   async ensureAzureResourcesExtension(): Promise<boolean> {
     if (vscode.extensions.getExtension(azureResourcesExtensionId)) return true;
     const install = "Install";
-    const choice = await vscode.window.showWarningMessage(
-      "Azure Bastion requires the Azure Resources extension to sign in to Azure and list your resources.",
-      install,
-    );
+    const choice = await vscode.window.showWarningMessage("Azure Bastion requires the Azure Resources extension to sign in to Azure and list your resources.", install);
     if (choice !== install) return false;
     try {
       await vscode.commands.executeCommand("workbench.extensions.installExtension", azureResourcesExtensionId);
@@ -569,15 +577,22 @@ export class BastionExplorer {
     this.context.subscriptions.push(this.view, this.tree);
     this.context.subscriptions.push(
       vscode.commands.registerCommand("azure-bastion.refreshResources", async () => this.refresh()),
+      vscode.commands.registerCommand("azure-bastion.refreshNode", async () => this.refresh()),
       vscode.commands.registerCommand("azure-bastion.signIn", async () => this.signIn()),
-      vscode.commands.registerCommand("azure-bastion.connectVm", async (vmId?: string) => this.connectVm(vmId)),
-      vscode.commands.registerCommand("azure-bastion.configureVm", async (vmId?: string) => this.configureVm(vmId)),
+      vscode.commands.registerCommand("azure-bastion.connectVmTunnel", async (vm?: string | ExplorerNode) => this.connectVm(vm, "tunnel")),
+      vscode.commands.registerCommand("azure-bastion.connectVmSsh", async (vm?: string | ExplorerNode) => this.connectVm(vm, "ssh")),
+      vscode.commands.registerCommand("azure-bastion.connectVmRdp", async (vm?: string | ExplorerNode) => this.connectVm(vm, "rdp")),
+      vscode.commands.registerCommand("azure-bastion.configureVm", async (vm?: string | ExplorerNode) => this.configureVm(vm)),
+      vscode.commands.registerCommand("azure-bastion.viewProperties", async (node?: ExplorerNode) => this.viewProperties(node)),
+      vscode.commands.registerCommand("azure-bastion.openSshConfig", async () => this.openSshConfig()),
+      vscode.commands.registerCommand("azure-bastion.openInPortal", async (node?: ExplorerNode) => this.openInPortal(node)),
       vscode.commands.registerCommand("azure-bastion.focusExplorer", async () => {
         await vscode.commands.executeCommand("workbench.view.extension.azureBastion");
         await this.refresh();
       }),
     );
     await this.resources.migrateLegacySettings();
+    await this.resources.syncSshConfig();
     await this.ensureAzureResourcesExtension();
     await this.refresh(false);
   }
@@ -599,9 +614,7 @@ export class BastionExplorer {
       await this.resources.saveSubscriptions(subscriptions);
       this.machines = machines;
       if (subscriptions.length === 0) {
-        this.tree.refresh([
-          { kind: "message", label: "No enabled Azure subscriptions found", command: "azure-bastion.refreshResources" },
-        ]);
+        this.tree.refresh([{ kind: "message", label: "No enabled Azure subscriptions found", command: "azure-bastion.refreshResources" }]);
         return;
       }
       const roots: ExplorerNode[] = subscriptions.map(subscription => ({
@@ -618,9 +631,7 @@ export class BastionExplorer {
             .map(machine => ({ kind: "vm", ...machine })),
         );
         if (this.tree.getChildren(root).length === 0) {
-          this.tree.setChildren(root, [
-            { kind: "message", label: "No Bastion-reachable virtual machines", command: "azure-bastion.refreshResources" },
-          ]);
+          this.tree.setChildren(root, [{ kind: "message", label: "No Bastion-reachable virtual machines", command: "azure-bastion.refreshResources" }]);
         }
       }
       this.tree.refresh(roots);
@@ -628,22 +639,57 @@ export class BastionExplorer {
     } catch (error) {
       this.log.appendLine(`ERROR: Azure resource refresh failed: ${error}`);
       const message = `${error}`;
-      const label = message.includes("Sign in to Azure") || message.includes("Install or enable")
-        ? "Sign in to Azure"
-        : "Azure resource refresh failed - retry";
+      const label = message.includes("Sign in to Azure") || message.includes("Install or enable") ? "Sign in to Azure" : "Azure resource refresh failed - retry";
       const command = label === "Sign in to Azure" ? "azure-bastion.signIn" : "azure-bastion.refreshResources";
       this.tree.refresh([{ kind: "message", label, command }]);
       if (showErrors) void vscode.window.showErrorMessage(`Azure resource refresh failed: ${error}`);
     }
   }
 
-  private async configureVm(vmId?: string): Promise<void> {
-    const machine = this.machines.find(entry => entry.vm.id.toLowerCase() === vmId?.toLowerCase());
+  private async openSshConfig(): Promise<void> {
+    await this.resources.syncSshConfig();
+    const file = this.resources.sshConfigPath;
+    if (!fs.existsSync(file)) {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "", "utf8");
+    }
+    await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file));
+  }
+
+  private async viewProperties(node?: ExplorerNode): Promise<void> {
+    if (node?.kind !== "subscription" && node?.kind !== "vm") return;
+    const [id, apiVersion] = node.kind === "vm" ? [node.vm.id, "2024-03-01"] : [`/subscriptions/${node.subscription.id}`, "2022-12-01"];
+    try {
+      const json = await this.resources.getResourceJson(id, apiVersion);
+      const document = await vscode.workspace.openTextDocument({ language: "json", content: JSON.stringify(json, null, 2) });
+      await vscode.window.showTextDocument(document, { preview: true });
+    } catch (error) {
+      this.log.appendLine(`ERROR: Could not load properties: ${error}`);
+      void vscode.window.showErrorMessage(`Could not load properties: ${error}`);
+    }
+  }
+
+  private async openInPortal(node?: ExplorerNode): Promise<void> {
+    if (node?.kind !== "subscription" && node?.kind !== "vm") return;
+    const id = node.kind === "vm" ? node.vm.id : `/subscriptions/${node.subscription.id}`;
+    const subscriptionId = node.kind === "vm" ? node.vm.subscriptionId : node.subscription.id;
+    const state = await this.resources.getState();
+    const tenantId = node.kind === "subscription" ? node.subscription.tenantId : state.subscriptions.find(subscription => subscription.id.toLowerCase() === subscriptionId.toLowerCase())?.tenantId;
+    await vscode.env.openExternal(vscode.Uri.parse(`https://portal.azure.com/${tenantId ? `#@${tenantId}` : "#"}/resource${id}`));
+  }
+
+  private getMachine(vm?: string | ExplorerNode) {
+    const vmId = typeof vm === "string" ? vm : vm?.kind === "vm" ? vm.vm.id : undefined;
+    return this.machines.find(entry => entry.vm.id.toLowerCase() === vmId?.toLowerCase());
+  }
+
+  private async configureVm(vm?: string | ExplorerNode): Promise<void> {
+    const machine = this.getMachine(vm);
     if (!machine) {
       void vscode.window.showErrorMessage("Refresh the Azure Bastion list and select a VM.");
       return;
     }
-    const current = (await this.resources.getState()).vmSettings[vmId?.toLowerCase() || ""] || {};
+    const current = (await this.resources.getState()).vmSettings[machine.vm.id.toLowerCase()] || {};
     const username = await vscode.window.showInputBox({
       title: `SSH username for ${machine.vm.name} (optional)`,
       prompt: "Only the username is saved. Passwords are never stored.",
@@ -655,9 +701,7 @@ export class BastionExplorer {
       title: `Tunnel remote port for ${machine.vm.name}`,
       prompt: "For example 22 (SSH) or 3389 (RDP)",
       value: current.remotePort?.toString() || "",
-      validateInput: value => value === "" || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535)
-        ? undefined
-        : "Enter a port from 1 to 65535.",
+      validateInput: value => (value === "" || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535) ? undefined : "Enter a port from 1 to 65535."),
       ignoreFocusOut: true,
     });
     if (remotePort === undefined) return;
@@ -665,9 +709,7 @@ export class BastionExplorer {
       title: `Tunnel local port for ${machine.vm.name}`,
       prompt: "For example 60022",
       value: current.localPort?.toString() || "",
-      validateInput: value => value === "" || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535)
-        ? undefined
-        : "Enter a port from 1 to 65535.",
+      validateInput: value => (value === "" || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535) ? undefined : "Enter a port from 1 to 65535."),
       ignoreFocusOut: true,
     });
     if (localPort === undefined) return;
@@ -680,23 +722,14 @@ export class BastionExplorer {
     void vscode.window.showInformationMessage(`Saved connection settings for ${machine.vm.name}.`);
   }
 
-  private async connectVm(vmId?: string): Promise<void> {
-    const machine = this.machines.find(entry => entry.vm.id.toLowerCase() === vmId?.toLowerCase());
+  private async connectVm(vm: string | ExplorerNode | undefined, mode: ConnectionMode): Promise<void> {
+    const machine = this.getMachine(vm);
     if (!machine) {
       void vscode.window.showErrorMessage("Refresh the Azure Bastion list and select a VM.");
       return;
     }
-    const mode = await vscode.window.showQuickPick(
-      [
-        { label: "$(debug-disconnect) Tunnel", value: "tunnel" },
-        { label: "$(terminal) SSH", value: "ssh" },
-        { label: "$(remote-explorer) RDP", value: "rdp" },
-      ],
-      { placeHolder: `Select connection type for ${machine.vm.name}` },
-    );
-    if (!mode) return;
     let settings = (await this.resources.getState()).vmSettings[machine.vm.id.toLowerCase()] || {};
-    if (mode.value === "ssh" && !settings.username) {
+    if (mode === "ssh" && !settings.username) {
       const username = await vscode.window.showInputBox({
         title: `SSH username for ${machine.vm.name}`,
         prompt: "This username will be saved for this VM. The password is not stored.",
@@ -710,21 +743,17 @@ export class BastionExplorer {
         return;
       }
     }
-    if (mode.value === "tunnel" && (!settings.remotePort || !settings.localPort)) {
+    if (mode === "tunnel" && (!settings.remotePort || !settings.localPort)) {
       const remotePortText = await vscode.window.showInputBox({
         title: `Tunnel remote port for ${machine.vm.name}`,
         value: settings.remotePort?.toString() || "22",
-        validateInput: value => /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535
-          ? undefined
-          : "Enter a port from 1 to 65535.",
+        validateInput: value => (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535 ? undefined : "Enter a port from 1 to 65535."),
       });
       if (remotePortText === undefined) return;
       const localPortText = await vscode.window.showInputBox({
         title: `Tunnel local port for ${machine.vm.name}`,
         value: settings.localPort?.toString() || "60022",
-        validateInput: value => /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535
-          ? undefined
-          : "Enter a port from 1 to 65535.",
+        validateInput: value => (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 65535 ? undefined : "Enter a port from 1 to 65535."),
       });
       if (localPortText === undefined) return;
       settings = { ...settings, remotePort: Number(remotePortText), localPort: Number(localPortText) };
@@ -743,15 +772,10 @@ export class BastionExplorer {
       if (!selected) return;
       bastion = machine.bastions[selected.index];
     }
-    await this.launchConnection(machine.vm, bastion, mode.value, settings);
+    await this.launchConnection(machine.vm, bastion, mode, settings);
   }
 
-  private async launchConnection(
-    vm: VirtualMachine,
-    bastion: BastionHost,
-    mode: string,
-    settings: VmSettings,
-  ): Promise<void> {
+  private async launchConnection(vm: VirtualMachine, bastion: BastionHost, mode: ConnectionMode, settings: VmSettings): Promise<void> {
     if (!process.env.WINDIR) {
       void vscode.window.showErrorMessage("Azure Bastion connections currently require Windows.");
       return;

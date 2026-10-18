@@ -30,19 +30,48 @@
       },
       {
         "command": "azure-bastion.refreshResources",
-        "title": "Azure Bastion: Refresh Resources"
+        "title": "Azure Bastion: Refresh Resources",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "azure-bastion.refreshNode",
+        "title": "Refresh"
       },
       {
         "command": "azure-bastion.signIn",
         "title": "Azure Bastion: Sign In to Azure"
       },
       {
-        "command": "azure-bastion.connectVm",
-        "title": "Azure Bastion: Connect to VM"
+        "command": "azure-bastion.connectVmTunnel",
+        "title": "Azure Bastion: Connect via Tunnel",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "azure-bastion.connectVmSsh",
+        "title": "Azure Bastion: Connect via SSH",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "azure-bastion.connectVmRdp",
+        "title": "Azure Bastion: Connect via RDP",
+        "icon": "$(remote-explorer)"
       },
       {
         "command": "azure-bastion.configureVm",
         "title": "Azure Bastion: Configure VM"
+      },
+      {
+        "command": "azure-bastion.openSshConfig",
+        "title": "Open SSH Config",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "azure-bastion.viewProperties",
+        "title": "View Properties"
+      },
+      {
+        "command": "azure-bastion.openInPortal",
+        "title": "Open in Portal"
       },
       {
         "command": "azure-bastion.focusExplorer",
@@ -54,7 +83,7 @@
         {
           "id": "azureBastion",
           "title": "Azure Bastion",
-          "icon": "images/azure-bastion-view.svg"
+          "icon": "$(debug-disconnect)"
         }
       ]
     },
@@ -62,7 +91,8 @@
       "azureBastion": [
         {
           "id": "azureBastion.resources",
-          "name": "Azure Resources"
+          "name": "Azure Resources",
+          "icon": "$(debug-disconnect)"
         }
       ]
     },
@@ -83,25 +113,67 @@
         {
           "command": "azure-bastion.focusExplorer",
           "when": "true"
+        },
+        {
+          "command": "azure-bastion.viewProperties",
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.openInPortal",
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.refreshNode",
+          "when": "false"
         }
       ],
       "view/title": [
         {
           "command": "azure-bastion.refreshResources",
           "when": "view == azureBastion.resources",
-          "group": "navigation"
+          "group": "navigation@2"
+        },
+        {
+          "command": "azure-bastion.openSshConfig",
+          "when": "view == azureBastion.resources",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
         {
-          "command": "azure-bastion.connectVm",
-          "when": "view == azureBastion.resources && viewItem == azureBastionVm",
-          "group": "inline"
+          "command": "azure-bastion.connectVmTunnel",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "0_connect@1"
+        },
+        {
+          "command": "azure-bastion.connectVmSsh",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "0_connect@2"
+        },
+        {
+          "command": "azure-bastion.connectVmRdp",
+          "when": "view == azureBastion.resources && viewItem == azureBastionVmWindows",
+          "group": "0_connect@3"
         },
         {
           "command": "azure-bastion.configureVm",
-          "when": "view == azureBastion.resources && viewItem == azureBastionVm",
-          "group": "1"
+          "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "1_configure"
+        },
+        {
+          "command": "azure-bastion.viewProperties",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "2_resource@1"
+        },
+        {
+          "command": "azure-bastion.openInPortal",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "2_resource@2"
+        },
+        {
+          "command": "azure-bastion.refreshNode",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "2_resource@3"
         }
       ]
     },
