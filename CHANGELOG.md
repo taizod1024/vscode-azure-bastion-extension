@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.7](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.6...v0.1.7) (2026-10-18)
+
+
+### Features
+
+* サイドバーのコマンドを追加し、Azureリソースのプロパティ表示機能を実装 ([42a1713](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/42a1713a1ee92cffdd8bac4ad34cdbacebd4dc9e))
+
 ### [0.1.6](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.5...v0.1.6) (2026-06-07)
 
 
