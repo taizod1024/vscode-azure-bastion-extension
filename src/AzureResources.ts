@@ -68,7 +68,7 @@ interface NetworkPeeringResource {
   };
 }
 
-type ExplorerNode = { kind: "subscription"; subscription: AzureSubscription } | { kind: "vm"; vm: VirtualMachine; bastions: BastionHost[] } | { kind: "message"; label: string; command: string };
+type ExplorerNode = { kind: "subscription"; subscription: AzureSubscription } | { kind: "vm"; vm: VirtualMachine; bastions: BastionHost[] } | { kind: "message"; label: string; command?: string };
 
 type ConnectionMode = "tunnel" | "ssh" | "rdp";
 
@@ -119,8 +119,8 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
       return item;
     }
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
-    item.command = { command: node.command, title: node.label };
-    item.iconPath = node.command.endsWith("signIn") ? new vscode.ThemeIcon("account") : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
+    if (node.command) item.command = { command: node.command, title: node.label };
+    item.iconPath = node.command?.endsWith("signIn") ? new vscode.ThemeIcon("account") : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
     return item;
   }
 
@@ -544,7 +544,9 @@ export class BastionExplorer {
   private readonly tree = new BastionTreeProvider();
   private readonly resources: AzureResources;
   private machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> = [];
+  private readonly temporaryPropertyFiles = new Map<string, string>();
   private view: vscode.TreeView<ExplorerNode> | undefined;
+  private refreshRequest = 0;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -576,6 +578,10 @@ export class BastionExplorer {
     });
     this.context.subscriptions.push(this.view, this.tree);
     this.context.subscriptions.push(
+      vscode.workspace.onDidCloseTextDocument(document => {
+        if (document.uri.scheme === "file") this.cleanupTemporaryPropertyFile(document.uri.fsPath);
+      }),
+      { dispose: () => this.cleanupTemporaryPropertyFiles() },
       vscode.commands.registerCommand("azure-bastion.refreshResources", async () => this.refresh()),
       vscode.commands.registerCommand("azure-bastion.refreshNode", async () => this.refresh()),
       vscode.commands.registerCommand("azure-bastion.signIn", async () => this.signIn()),
@@ -585,7 +591,8 @@ export class BastionExplorer {
       vscode.commands.registerCommand("azure-bastion.configureVm", async (vm?: string | ExplorerNode) => this.configureVm(vm)),
       vscode.commands.registerCommand("azure-bastion.viewProperties", async (node?: ExplorerNode) => this.viewProperties(node)),
       vscode.commands.registerCommand("azure-bastion.openSshConfig", async () => this.openSshConfig()),
-      vscode.commands.registerCommand("azure-bastion.openInPortal", async (node?: ExplorerNode) => this.openInPortal(node)),
+      vscode.commands.registerCommand("azure-bastion.openInPortal", async (node?: ExplorerNode) => this.openInPortal(node, false)),
+      vscode.commands.registerCommand("azure-bastion.openInPortalExternal", async (node?: ExplorerNode) => this.openInPortal(node, true)),
       vscode.commands.registerCommand("azure-bastion.focusExplorer", async () => {
         await vscode.commands.executeCommand("workbench.view.extension.azureBastion");
         await this.refresh();
@@ -609,9 +616,14 @@ export class BastionExplorer {
   }
 
   private async refresh(showErrors = true): Promise<void> {
+    const request = ++this.refreshRequest;
+    this.machines = [];
+    this.tree.refresh([{ kind: "message", label: "Refreshing Azure resources..." }]);
     try {
       const { subscriptions, machines } = await this.resources.discover();
+      if (request !== this.refreshRequest) return;
       await this.resources.saveSubscriptions(subscriptions);
+      if (request !== this.refreshRequest) return;
       this.machines = machines;
       if (subscriptions.length === 0) {
         this.tree.refresh([{ kind: "message", label: "No enabled Azure subscriptions found", command: "azure-bastion.refreshResources" }]);
@@ -637,6 +649,7 @@ export class BastionExplorer {
       this.tree.refresh(roots);
       this.log.appendLine(`Azure resources refreshed: ${subscriptions.length} subscription(s), ${machines.length} Bastion-reachable VM(s).`);
     } catch (error) {
+      if (request !== this.refreshRequest) return;
       this.log.appendLine(`ERROR: Azure resource refresh failed: ${error}`);
       const message = `${error}`;
       const label = message.includes("Sign in to Azure") || message.includes("Install or enable") ? "Sign in to Azure" : "Azure resource refresh failed - retry";
@@ -659,23 +672,72 @@ export class BastionExplorer {
   private async viewProperties(node?: ExplorerNode): Promise<void> {
     if (node?.kind !== "subscription" && node?.kind !== "vm") return;
     const [id, apiVersion] = node.kind === "vm" ? [node.vm.id, "2024-03-01"] : [`/subscriptions/${node.subscription.id}`, "2022-12-01"];
+    let temporaryFile: string | undefined;
     try {
       const json = await this.resources.getResourceJson(id, apiVersion);
-      const document = await vscode.workspace.openTextDocument({ language: "json", content: JSON.stringify(json, null, 2) });
+      const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "azure-bastion-properties-"));
+      temporaryFile = path.join(temporaryDirectory, "resource.json");
+      this.temporaryPropertyFiles.set(temporaryFile, temporaryDirectory);
+      fs.writeFileSync(temporaryFile, JSON.stringify(json, null, 2), "utf8");
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(temporaryFile));
       await vscode.window.showTextDocument(document, { preview: true });
     } catch (error) {
+      if (temporaryFile) this.cleanupTemporaryPropertyFile(temporaryFile);
       this.log.appendLine(`ERROR: Could not load properties: ${error}`);
       void vscode.window.showErrorMessage(`Could not load properties: ${error}`);
     }
   }
 
-  private async openInPortal(node?: ExplorerNode): Promise<void> {
-    if (node?.kind !== "subscription" && node?.kind !== "vm") return;
+  private cleanupTemporaryPropertyFile(temporaryFile: string): void {
+    const temporaryDirectory = this.temporaryPropertyFiles.get(temporaryFile);
+    if (!temporaryDirectory) return;
+    try {
+      if (fs.existsSync(temporaryFile)) fs.unlinkSync(temporaryFile);
+      if (fs.existsSync(temporaryDirectory)) fs.rmdirSync(temporaryDirectory);
+      this.temporaryPropertyFiles.delete(temporaryFile);
+    } catch (error) {
+      this.log.appendLine(`WARN: Could not remove temporary properties file ${temporaryFile}: ${error}`);
+    }
+  }
+
+  private cleanupTemporaryPropertyFiles(): void {
+    for (const temporaryFile of this.temporaryPropertyFiles.keys()) {
+      this.cleanupTemporaryPropertyFile(temporaryFile);
+    }
+  }
+
+  /**
+   * Azure ポータルのリソース URL を作成する。
+   * @param node ポータルで開くサブスクリプションまたは VM
+   * @returns ポータル URL。対象が無効な場合は undefined
+   */
+  private async portalUrlFor(node?: ExplorerNode): Promise<string | undefined> {
+    if (node?.kind !== "subscription" && node?.kind !== "vm") return undefined;
     const id = node.kind === "vm" ? node.vm.id : `/subscriptions/${node.subscription.id}`;
     const subscriptionId = node.kind === "vm" ? node.vm.subscriptionId : node.subscription.id;
     const state = await this.resources.getState();
     const tenantId = node.kind === "subscription" ? node.subscription.tenantId : state.subscriptions.find(subscription => subscription.id.toLowerCase() === subscriptionId.toLowerCase())?.tenantId;
-    await vscode.env.openExternal(vscode.Uri.parse(`https://portal.azure.com/${tenantId ? `#@${tenantId}` : "#"}/resource${id}`));
+    return `https://portal.azure.com/${tenantId ? `#@${tenantId}` : "#"}/resource${id}`;
+  }
+
+  /**
+   * Azure ポータルを内部または外部ブラウザーで開く。
+   * @param node ポータルで開くサブスクリプションまたは VM
+   * @param useExternalBrowser 外部ブラウザーを使用する場合は true
+   */
+  private async openInPortal(node: ExplorerNode | undefined, useExternalBrowser: boolean): Promise<void> {
+    try {
+      const url = await this.portalUrlFor(node);
+      if (!url) return;
+      if (useExternalBrowser) {
+        await vscode.env.openExternal(vscode.Uri.parse(url));
+      } else {
+        await vscode.commands.executeCommand("simpleBrowser.show", url);
+      }
+    } catch (error) {
+      this.log.appendLine(`ERROR: Could not open Azure portal: ${error}`);
+      void vscode.window.showErrorMessage(`Could not open Azure portal: ${error}`);
+    }
   }
 
   private getMachine(vm?: string | ExplorerNode) {
