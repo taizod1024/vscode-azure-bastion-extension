@@ -26,39 +26,40 @@
     "commands": [
       {
         "command": "azure-bastion.invokeAZNetWork",
-        "title": "Azure Bastion: Open Resources"
+        "title": "Open Resources"
       },
       {
         "command": "azure-bastion.refreshResources",
-        "title": "Azure Bastion: Refresh Resources",
+        "title": "Refresh Resources",
         "icon": "$(refresh)"
       },
       {
         "command": "azure-bastion.refreshNode",
-        "title": "Refresh"
+        "title": "Refresh",
+        "icon": "$(refresh)"
       },
       {
         "command": "azure-bastion.signIn",
-        "title": "Azure Bastion: Sign In to Azure"
+        "title": "Sign in to Azure"
       },
       {
         "command": "azure-bastion.connectVmTunnel",
-        "title": "Azure Bastion: Connect via Tunnel",
+        "title": "Connect via Tunnel",
         "icon": "$(debug-disconnect)"
       },
       {
         "command": "azure-bastion.connectVmSsh",
-        "title": "Azure Bastion: Connect via SSH",
+        "title": "Connect via SSH",
         "icon": "$(terminal)"
       },
       {
         "command": "azure-bastion.connectVmRdp",
-        "title": "Azure Bastion: Connect via RDP",
+        "title": "Connect via RDP",
         "icon": "$(remote-explorer)"
       },
       {
         "command": "azure-bastion.configureVm",
-        "title": "Azure Bastion: Configure VM"
+        "title": "Configure VM"
       },
       {
         "command": "azure-bastion.openSshConfig",
@@ -71,11 +72,17 @@
       },
       {
         "command": "azure-bastion.openInPortal",
-        "title": "Open in Portal"
+        "title": "Open in Portal",
+        "icon": "$(browser)"
+      },
+      {
+        "command": "azure-bastion.openInPortalExternal",
+        "title": "Open in Portal with External Browser",
+        "icon": "$(link-external)"
       },
       {
         "command": "azure-bastion.focusExplorer",
-        "title": "Azure Bastion: Open Resources"
+        "title": "Open Resources"
       }
     ],
     "viewsContainers": {
@@ -100,19 +107,35 @@
       "commandPalette": [
         {
           "command": "azure-bastion.invokeAZNetWork",
-          "when": "true"
+          "when": "false"
         },
         {
           "command": "azure-bastion.refreshResources",
-          "when": "true"
+          "when": "false"
         },
         {
           "command": "azure-bastion.signIn",
-          "when": "true"
+          "when": "false"
         },
         {
           "command": "azure-bastion.focusExplorer",
-          "when": "true"
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.connectVmTunnel",
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.connectVmSsh",
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.connectVmRdp",
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.configureVm",
+          "when": "false"
         },
         {
           "command": "azure-bastion.viewProperties",
@@ -123,7 +146,15 @@
           "when": "false"
         },
         {
+          "command": "azure-bastion.openInPortalExternal",
+          "when": "false"
+        },
+        {
           "command": "azure-bastion.refreshNode",
+          "when": "false"
+        },
+        {
+          "command": "azure-bastion.openSshConfig",
           "when": "false"
         }
       ],
@@ -171,9 +202,14 @@
           "group": "2_resource@2"
         },
         {
-          "command": "azure-bastion.refreshNode",
+          "command": "azure-bastion.openInPortalExternal",
           "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
           "group": "2_resource@3"
+        },
+        {
+          "command": "azure-bastion.refreshNode",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "2_resource@4"
         }
       ]
     },
