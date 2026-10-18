@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.9](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.8...v0.1.9) (2026-10-18)
+
+
+### Features
+
+* VMのパワーステートを表示し、リフレッシュ時に最新の状態を取得する機能を追加 ([1b739c6](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/1b739c69e9609ad9c3238d7321ab4de645c4695a))
+
 ### [0.1.8](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.7...v0.1.8) (2026-10-18)
 
 
