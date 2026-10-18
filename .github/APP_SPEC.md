@@ -8,7 +8,7 @@ The view title provides resource refresh and SSH configuration actions. VM conte
 
 VM rows expose inline icon actions for Tunnel, SSH, RDP (Windows only), built-in browser, external browser, and refresh. Subscription rows expose built-in browser, external browser, and refresh inline actions. The same actions remain available from the context menu; inline icons are revealed when hovering over a row.
 
-Each displayed VM includes its Azure power state in the tooltip. A running VM uses the normal blue icon; other or unavailable power states use a muted icon. Power state is fetched from the VM Instance View during resource discovery, so each refresh updates the displayed state. An Instance View request failure is logged and does not prevent the VM from appearing.
+Each displayed VM shows the Azure power state (for example, `running` or `deallocated`) in its description beside the name and in its tooltip. A running VM uses the normal blue icon; other or unavailable power states use a muted icon. Power state is fetched from the VM Instance View during resource discovery, so each refresh updates the displayed state. An Instance View request failure is logged and does not prevent the VM from appearing.
 
 ## Resource properties
 
@@ -16,7 +16,7 @@ View Properties fetches the selected subscription or VM JSON from Azure Resource
 
 ## Resource refresh
 
-Refreshing replaces the current tree with a loading message before starting Azure resource discovery. The tree is rebuilt with the discovered subscriptions, VMs, and latest VM power states when discovery succeeds. If discovery fails, the loading message is replaced by a sign-in or retry action; stale tree nodes are not retained. Only the most recently requested refresh may update the tree.
+The view-title refresh reloads the complete resource tree, replacing it with a loading message until Azure resource discovery finishes. A subscription row's Refresh action reloads only that subscription's VM children, using Bastion hosts across signed-in subscriptions to preserve cross-subscription reachability checks. A VM row's Refresh action reloads only that VM's power state. A failed node refresh preserves the current tree and reports the error. Only the most recently requested refresh may update the tree.
 
 ## Azure portal
 
