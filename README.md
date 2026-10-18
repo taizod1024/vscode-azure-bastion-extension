@@ -1,4 +1,4 @@
-# Azure Bastion Extension - beta
+# Azure Bastion Extension
 
 A VS Code extension for Azure Bastion
 
