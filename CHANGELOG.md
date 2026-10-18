@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.15](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.14...v0.1.15) (2026-10-18)
+
+
+### Features
+
+* リフレッシュ中のVMアイコンを同期中アイコンに変更し、ユーザー体験を向上 ([d3909f0](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/d3909f00caae2f07b82584bcfb9762bea9a40097))
+
 ### [0.1.14](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.13...v0.1.14) (2026-10-18)
 
 
