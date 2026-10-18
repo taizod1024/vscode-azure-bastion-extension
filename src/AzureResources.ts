@@ -122,7 +122,11 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
     }
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
     if (node.command) item.command = { command: node.command, title: node.label };
-    item.iconPath = node.command?.endsWith("signIn") ? new vscode.ThemeIcon("account") : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
+    item.iconPath = node.command?.endsWith("signIn")
+      ? new vscode.ThemeIcon("account")
+      : node.label.startsWith("Refreshing")
+        ? new vscode.ThemeIcon("sync~spin")
+        : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
     return item;
   }
 
