@@ -24,6 +24,7 @@ interface VirtualMachine {
   id: string;
   name: string;
   osType?: string;
+  powerState?: string;
   subscriptionId: string;
   resourceGroup: string;
   networkInterfaceIds: string[];
@@ -59,6 +60,7 @@ interface ArmResource {
   state?: string;
   nextLink?: string;
   value?: ArmResource[];
+  statuses?: Array<{ code?: string }>;
 }
 
 interface NetworkPeeringResource {
@@ -113,9 +115,10 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
     }
     if (node.kind === "vm") {
       const item = new vscode.TreeItem(node.vm.name, vscode.TreeItemCollapsibleState.None);
-      item.tooltip = node.vm.id;
+      item.tooltip = `${node.vm.id}\nPower state: ${node.vm.powerState || "Unknown"}`;
       item.contextValue = isWindowsVm(node.vm) ? "azureBastionVmWindows" : "azureBastionVmOther";
-      item.iconPath = new vscode.ThemeIcon(vmIcon(node.vm), new vscode.ThemeColor("charts.blue"));
+      const iconColor = node.vm.powerState === "running" ? "charts.blue" : "disabledForeground";
+      item.iconPath = new vscode.ThemeIcon(vmIcon(node.vm), new vscode.ThemeColor(iconColor));
       return item;
     }
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
@@ -399,6 +402,22 @@ class AzureResources {
     return [...new Set(results.flat())];
   }
 
+  private async getVmPowerState(token: string, vm: VirtualMachine): Promise<string | undefined> {
+    try {
+      const instanceView = await this.requestJson(
+        this.tokenFor(vm.id, token),
+        `${vm.id}/instanceView?api-version=2024-03-01`,
+      );
+      return instanceView.statuses
+        ?.find(status => status.code?.startsWith("PowerState/"))
+        ?.code?.slice("PowerState/".length)
+        .toLowerCase();
+    } catch (error) {
+      this.log.appendLine(`WARN: Could not load power state for VM ${vm.id}: ${error}`);
+      return undefined;
+    }
+  }
+
   async discover(): Promise<{ subscriptions: AzureSubscription[]; machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> }> {
     const session = await this.getSession(false);
     if (!session) throw new Error("Sign in to Azure from the Azure Resources view, then refresh this list.");
@@ -438,7 +457,9 @@ class AzureResources {
           });
         }
       }
-      return { vm, bastions: matchingBastions };
+      if (matchingBastions.length === 0) return { vm, bastions: matchingBastions };
+      const powerState = await this.getVmPowerState(session.accessToken, vm);
+      return { vm: { ...vm, powerState }, bastions: matchingBastions };
     });
     return { subscriptions, machines: machines.filter(machine => machine.bastions.length > 0) };
   }
