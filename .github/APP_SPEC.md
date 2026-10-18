@@ -6,6 +6,8 @@ The extension exposes Azure subscriptions and Bastion-reachable virtual machines
 
 The view title provides resource refresh and SSH configuration actions. VM context menus provide Tunnel and SSH connections, plus RDP for Windows VMs, and VM configuration. Subscription and VM context menus provide properties, portal, and refresh actions.
 
+VM rows expose inline icon actions for Tunnel, SSH, RDP (Windows only), built-in browser, external browser, and refresh. Subscription rows expose built-in browser, external browser, and refresh inline actions. The same actions remain available from the context menu; inline icons are revealed when hovering over a row.
+
 Each displayed VM includes its Azure power state in the tooltip. A running VM uses the normal blue icon; other or unavailable power states use a muted icon. Power state is fetched from the VM Instance View during resource discovery, so each refresh updates the displayed state. An Instance View request failure is logged and does not prevent the VM from appearing.
 
 ## Resource properties
