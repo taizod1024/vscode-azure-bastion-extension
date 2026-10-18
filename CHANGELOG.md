@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.10](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.9...v0.1.10) (2026-10-18)
+
+
+### Features
+
+* VM行にインラインアイコンアクションを追加し、リソースの操作を簡素化 ([d56319f](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/d56319fb936e0f31d6ca8b9051ef45f1fbb77809))
+
 ### [0.1.9](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.8...v0.1.9) (2026-10-18)
 
 
