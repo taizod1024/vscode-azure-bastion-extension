@@ -9,6 +9,9 @@
   "extensionKind": [
     "ui"
   ],
+  "extensionDependencies": [
+    "ms-azuretools.vscode-azureresourcegroups"
+  ],
   "categories": [
     "Other"
   ],

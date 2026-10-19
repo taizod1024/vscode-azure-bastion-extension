@@ -2,7 +2,7 @@
 
 ## Azure Bastion resource view
 
-The extension exposes one Azure Bastion root node containing Azure subscriptions and Bastion-reachable virtual machines in the Azure Bastion Activity Bar view. The Command Palette is not used to launch extension features; resource discovery, sign-in, connections, and resource actions are available from the view and its context menus.
+The extension declares the Azure Resources extension (`ms-azuretools.vscode-azureresourcegroups`) as a required VS Code extension dependency and exposes one Azure Bastion root node containing Azure subscriptions and Bastion-reachable virtual machines in the Azure Bastion Activity Bar view. VS Code manages the dependency; Azure Bastion does not install it itself. The Command Palette is not used to launch extension features; resource discovery, sign-in, connections, and resource actions are available from the view and its context menus.
 
 The Azure Bastion root row provides a refresh action for the complete resource tree. The view title provides the SSH configuration action. VM context menus provide Tunnel and SSH connections, plus RDP for Windows VMs, and VM configuration. Subscription and VM context menus provide properties, portal, and refresh actions.
 

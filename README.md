@@ -28,7 +28,7 @@ A VS Code extension for Azure Bastion
 2. Install the VS Code extension
    1. Open VS Code
    2. Install the Azure Bastion extension from the extensions marketplace
-3. The **Azure Resources** extension (`ms-azuretools.vscode-azureresourcegroups`) is required for Azure sign-in. On startup, Azure Bastion offers to install it if it is missing. Sign in to Azure from its Resources view or from the Azure Bastion view.
+3. The **Azure Resources** extension (`ms-azuretools.vscode-azureresourcegroups`) is a required dependency of Azure Bastion and is managed by VS Code. Sign in to Azure from its Resources view or from the Azure Bastion view.
 
 ## Azure Bastion sidebar
 
