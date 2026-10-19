@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.19](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.18...v0.1.19) (2026-10-19)
+
+
+### Features
+
+* Azure Resources extension dependency management and error messaging improvements ([fb62873](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/fb62873fe4105e50e4ddb6a5d538b345928e4717))
+* BastionTreeProviderのリフレッシュ処理を改善し、エラーメッセージの表示を強化 ([aa644bb](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/aa644bb8beac69cd4f53b79d3ae9edbd84c93a79))
+
 ### [0.1.18](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.17...v0.1.18) (2026-10-19)
 
 
