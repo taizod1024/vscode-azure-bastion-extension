@@ -198,7 +198,7 @@ class AzureResources {
   private async getSession(createIfNone: boolean): Promise<vscode.AuthenticationSession | undefined> {
     const provider = vscode.extensions.getExtension(azureResourcesExtensionId);
     if (!provider) {
-      throw new Error("Install or enable the Azure Resources extension to sign in to Azure.");
+      throw new Error("The required Azure Resources extension is unavailable or disabled.");
     }
     if (!provider.isActive) await provider.activate();
     const session = await vscode.authentication.getSession("microsoft", microsoftScopes, { createIfNone });
@@ -683,22 +683,6 @@ export class BastionExplorer {
     this.resources = new AzureResources(context, log);
   }
 
-  /** prompt to install the Azure Resources extension when it is missing; returns true if available */
-  async ensureAzureResourcesExtension(): Promise<boolean> {
-    if (vscode.extensions.getExtension(azureResourcesExtensionId)) return true;
-    const install = "Install";
-    const choice = await vscode.window.showWarningMessage("Azure Bastion requires the Azure Resources extension to sign in to Azure and list your resources.", install);
-    if (choice !== install) return false;
-    try {
-      await vscode.commands.executeCommand("workbench.extensions.installExtension", azureResourcesExtensionId);
-    } catch (error) {
-      this.log.appendLine(`ERROR: Could not install ${azureResourcesExtensionId}: ${error}`);
-      void vscode.window.showErrorMessage(`Could not install the Azure Resources extension: ${error}`);
-      return false;
-    }
-    return !!vscode.extensions.getExtension(azureResourcesExtensionId);
-  }
-
   async activate(): Promise<void> {
     this.view = vscode.window.createTreeView("azureBastion.resources", {
       treeDataProvider: this.tree,
@@ -728,13 +712,11 @@ export class BastionExplorer {
     );
     await this.resources.migrateLegacySettings();
     await this.resources.syncSshConfig();
-    await this.ensureAzureResourcesExtension();
     await this.refresh(false);
   }
 
   private async signIn(): Promise<void> {
     try {
-      if (!(await this.ensureAzureResourcesExtension())) return;
       await this.resources.signIn();
       await this.refresh(true);
     } catch (error) {
