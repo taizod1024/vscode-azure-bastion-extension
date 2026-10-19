@@ -1,4 +1,4 @@
-# Azure Bastion Extension
+# Azure Bastion Extension (Work In Progress)
 
 A VS Code extension for Azure Bastion
 
@@ -34,15 +34,15 @@ A VS Code extension for Azure Bastion
 
 1. Open the **Azure Bastion** view from the Activity Bar. Features are accessed from the view and its context menus, not the Command Palette.
 2. Sign in to Azure in the Azure Resources view if prompted.
-3. The view lists subscriptions and virtual machines that share a virtual network with a Bastion host or are connected through a directly connected VNet peering. VM names are sorted alphabetically within each subscription.
+3. The view has one **Azure Bastion** root node containing subscriptions and virtual machines that share a virtual network with a Bastion host or are connected through a directly connected VNet peering. VM names are sorted alphabetically within each subscription.
    Each VM shows its power state (for example, `running` or `deallocated`) next to its name.
-4. Use the refresh button in the view title to reload all resources. A subscription's **Refresh** action reloads only its VM children; a VM's **Refresh** action reloads only that VM's power state.
+4. Use the refresh button in the view title to reload all resources. A subscription's **Refresh** action reloads only its VM children; a VM's **Refresh** action reloads only that VM's power state. The node being refreshed shows an animated spinner. A failed resource fetch is marked with a red error icon.
 5. Hover over a VM to reveal inline Tunnel, SSH, RDP (Windows only), built-in browser, external browser, and refresh icons. You can also right-click a VM to access these actions. If more than one Bastion can reach that VM, select a Bastion; a single candidate is used automatically. Subscriptions also have inline built-in browser, external browser, and refresh icons.
 6. Use **Configure VM** in the VM context menu to set its SSH username and tunnel ports. When connecting, missing SSH usernames and tunnel ports can also be entered and saved.
 7. Saved VM settings are synced to `~/.ssh/config` as a managed block (`# azure-bastion:start` to `# azure-bastion:end`) with `Host <VM name>`, `HostName localhost`, `Port <local port>`, and `User <username>`. Use the **Open SSH Config** button at the top of the view to review it. The extension storage is the source of truth: edit VM settings with **Configure VM**, not inside the block, because changes in the block are overwritten. Content outside the block is never modified.
 8. Use **View Properties** to open the resource's JSON from Azure Resource Manager. The JSON is opened from a temporary file and is removed when the document is closed, avoiding an unsaved-document prompt. **Open in Portal** opens the resource in VS Code's built-in browser, and **Open in Portal with External Browser** opens it in your default browser. Both portal actions are available on subscriptions and VMs.
 
-Azure sign-in for resource discovery is provided by VS Code's built-in Microsoft authentication through Azure Resources. Connection commands still use Azure CLI, which may prompt you to sign in, and require the `ssh` and `bastion` extensions as described above. The extension stores VM usernames and port numbers in VS Code extension storage; it never stores passwords. SSH and RDP authentication prompts remain with Azure CLI.
+Azure sign-in for resource discovery is provided by VS Code's built-in Microsoft authentication through Azure Resources. If VS Code cannot refresh an expired Azure access token, the extension displays an error dialog; sign in again from the Azure Resources view and refresh the list. This error indicates token renewal failed, not that the PC clock is incorrect. Windows VM actions are determined from the VM's OS disk type. Connection commands still use Azure CLI, which may prompt you to sign in, and require the `ssh` and `bastion` extensions as described above. The extension stores VM usernames and port numbers in VS Code extension storage; it never stores passwords. SSH and RDP authentication prompts remain with Azure CLI.
 
 On first activation, the previous `azure-bastion.*` settings are migrated to extension storage and the migrated global/workspace setting values are removed. No connection targets need to be configured in Settings.
 
