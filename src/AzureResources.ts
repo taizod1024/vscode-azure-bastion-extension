@@ -122,6 +122,7 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
   getTreeItem(node: ExplorerNode): vscode.TreeItem {
     if (node.kind === "root") {
       const item = new vscode.TreeItem("Azure Bastion", vscode.TreeItemCollapsibleState.Expanded);
+      item.description = node.refreshing === "busy" ? "Refreshing..." : undefined;
       item.contextValue = "azureBastionRoot";
       item.iconPath = node.refreshing === "busy"
         ? new vscode.ThemeIcon("sync~spin")
@@ -132,6 +133,7 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
     }
     if (node.kind === "subscription") {
       const item = new vscode.TreeItem(node.subscription.name, vscode.TreeItemCollapsibleState.Expanded);
+      item.description = node.refreshing === "busy" ? "Refreshing..." : undefined;
       item.contextValue = "azureBastionSubscription";
       item.iconPath = node.refreshing === "busy"
         ? new vscode.ThemeIcon("sync~spin")
@@ -746,6 +748,7 @@ export class BastionExplorer {
     this.isRefreshing = true;
     this.machines = [];
     this.tree.setRootRefreshing("busy");
+    this.tree.refresh([]);
     try {
       if (this.nodeRefreshInProgress) await this.nodeRefreshInProgress;
       if (request !== this.refreshRequest) return;
