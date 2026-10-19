@@ -86,10 +86,6 @@ function isWindowsVm(vm: VirtualMachine): boolean {
   return /^Windows$/i.test(vm.osType || "");
 }
 
-function vmIcon(): string {
-  return "vm";
-}
-
 const stateKey = "azure-bastion.sidebar.v1";
 const sshBlockStart = "# azure-bastion:start (managed by the Azure Bastion extension; edits in this block are overwritten)";
 const sshBlockEnd = "# azure-bastion:end";
@@ -100,23 +96,17 @@ const microsoftScopes = ["https://management.azure.com/user_impersonation"];
 class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
   private readonly changed = new vscode.EventEmitter<ExplorerNode | undefined | null | void>();
   readonly onDidChangeTreeData = this.changed.event;
-  private readonly root: ExplorerNode = { kind: "root" };
-  private nodes: ExplorerNode[] = [this.root];
+  private readonly root: Extract<ExplorerNode, { kind: "root" }> = { kind: "root" };
   private readonly children = new Map<ExplorerNode, ExplorerNode[]>();
 
-  refresh(nodes: ExplorerNode[]) {
+  refresh(nodes: ExplorerNode[], rootRefreshing?: "busy" | "failed") {
+    this.root.refreshing = rootRefreshing;
     this.children.set(this.root, nodes);
     const current = new Set([this.root, ...nodes]);
     for (const node of this.children.keys()) {
       if (!current.has(node)) this.children.delete(node);
     }
     this.changed.fire();
-  }
-
-  setRootRefreshing(refreshing?: "busy" | "failed") {
-    if (this.root.kind !== "root") return;
-    this.root.refreshing = refreshing;
-    this.changed.fire(this.root);
   }
 
   getTreeItem(node: ExplorerNode): vscode.TreeItem {
@@ -152,21 +142,19 @@ class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
         ? new vscode.ThemeIcon("sync~spin")
         : node.refreshing === "failed" || node.vm.powerStateFetchFailed
           ? new vscode.ThemeIcon("error", new vscode.ThemeColor("errorForeground"))
-          : new vscode.ThemeIcon(vmIcon(), new vscode.ThemeColor(iconColor));
+          : new vscode.ThemeIcon("vm", new vscode.ThemeColor(iconColor));
       return item;
     }
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
     if (node.command) item.command = { command: node.command, title: node.label };
     item.iconPath = node.command?.endsWith("signIn")
       ? new vscode.ThemeIcon("account")
-      : node.label.startsWith("Refreshing")
-        ? new vscode.ThemeIcon("sync~spin")
-        : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
+      : new vscode.ThemeIcon("info", new vscode.ThemeColor("charts.yellow"));
     return item;
   }
 
   getChildren(node?: ExplorerNode): ExplorerNode[] {
-    if (!node) return this.nodes;
+    if (!node) return [this.root];
     if (node.kind !== "root" && node.kind !== "subscription") return [];
     return this.children.get(node) || [];
   }
@@ -671,7 +659,6 @@ export class BastionExplorer {
   private readonly resources: AzureResources;
   private machines: Array<{ vm: VirtualMachine; bastions: BastionHost[] }> = [];
   private readonly temporaryPropertyFiles = new Map<string, string>();
-  private view: vscode.TreeView<ExplorerNode> | undefined;
   private refreshRequest = 0;
   private isRefreshing = false;
   private nodeRefreshInProgress: Promise<void> | undefined;
@@ -684,11 +671,11 @@ export class BastionExplorer {
   }
 
   async activate(): Promise<void> {
-    this.view = vscode.window.createTreeView("azureBastion.resources", {
+    const view = vscode.window.createTreeView("azureBastion.resources", {
       treeDataProvider: this.tree,
       showCollapseAll: true,
     });
-    this.context.subscriptions.push(this.view, this.tree);
+    this.context.subscriptions.push(view, this.tree);
     this.context.subscriptions.push(
       vscode.workspace.onDidCloseTextDocument(document => {
         if (document.uri.scheme === "file") this.cleanupTemporaryPropertyFile(document.uri.fsPath);
@@ -729,8 +716,7 @@ export class BastionExplorer {
     const request = ++this.refreshRequest;
     this.isRefreshing = true;
     this.machines = [];
-    this.tree.setRootRefreshing("busy");
-    this.tree.refresh([]);
+    this.tree.refresh([], "busy");
     try {
       if (this.nodeRefreshInProgress) await this.nodeRefreshInProgress;
       if (request !== this.refreshRequest) return;
@@ -739,7 +725,6 @@ export class BastionExplorer {
       await this.resources.saveSubscriptions(subscriptions);
       if (request !== this.refreshRequest) return;
       this.machines = machines;
-      this.tree.setRootRefreshing(undefined);
       if (subscriptions.length === 0) {
         this.tree.refresh([{ kind: "message", label: "No enabled Azure subscriptions found", command: "azure-bastion.refreshResources" }]);
         return;
@@ -757,12 +742,11 @@ export class BastionExplorer {
       this.log.appendLine(`Azure resources refreshed: ${subscriptions.length} subscription(s), ${machines.length} Bastion-reachable VM(s).`);
     } catch (error) {
       if (request !== this.refreshRequest) return;
-      this.tree.setRootRefreshing("failed");
       this.log.appendLine(`ERROR: Azure resource refresh failed: ${error}`);
       const message = `${error}`;
-      const label = message.includes("Sign in to Azure") || message.includes("Install or enable") ? "Sign in to Azure" : "Azure resource refresh failed - retry";
+      const label = message.includes("Sign in to Azure") ? "Sign in to Azure" : "Azure resource refresh failed - retry";
       const command = label === "Sign in to Azure" ? "azure-bastion.signIn" : "azure-bastion.refreshResources";
-      this.tree.refresh([{ kind: "message", label, command }]);
+      this.tree.refresh([{ kind: "message", label, command }], "failed");
       if (showErrors || error instanceof AzureAuthenticationError) void vscode.window.showErrorMessage(`Azure resource refresh failed: ${error}`);
     } finally {
       if (request === this.refreshRequest) this.isRefreshing = false;
