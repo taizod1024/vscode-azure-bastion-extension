@@ -746,7 +746,6 @@ export class BastionExplorer {
     this.isRefreshing = true;
     this.machines = [];
     this.tree.setRootRefreshing("busy");
-    this.tree.refresh([{ kind: "message", label: "Refreshing Azure resources..." }]);
     try {
       if (this.nodeRefreshInProgress) await this.nodeRefreshInProgress;
       if (request !== this.refreshRequest) return;
@@ -815,14 +814,10 @@ export class BastionExplorer {
   private async refreshNodeData(node: Extract<ExplorerNode, { kind: "subscription" | "vm" }>, request: number): Promise<void> {
     try {
       if (node.kind === "subscription") {
-        const root = this.tree.getChildren().find(
-          (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
-            candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === node.subscription.id.toLowerCase(),
-        );
+        const root = this.getSubscriptionNode(node.subscription.id);
         if (!root) return;
         root.refreshing = "busy";
         this.tree.updateNode(root);
-        this.tree.updateChildren(root, [{ kind: "message", label: "Refreshing Azure resources..." }]);
         let refreshed: Awaited<ReturnType<AzureResources["discoverSubscription"]>>;
         try {
           refreshed = await this.resources.discoverSubscription(node.subscription.id);
@@ -847,10 +842,7 @@ export class BastionExplorer {
         return;
       }
 
-      const root = this.tree.getChildren().find(
-        (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
-          candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === node.vm.subscriptionId.toLowerCase(),
-      );
+      const root = this.getSubscriptionNode(node.vm.subscriptionId);
       if (!root) return;
       const setRefreshing = (refreshing?: "busy" | "failed") => {
         const siblings = this.tree.getChildren(root);
@@ -890,6 +882,15 @@ export class BastionExplorer {
       this.log.appendLine(`ERROR: ${message}`);
       void vscode.window.showErrorMessage(message);
     }
+  }
+
+  private getSubscriptionNode(subscriptionId: string): Extract<ExplorerNode, { kind: "subscription" }> | undefined {
+    const root = this.tree.getChildren().find((candidate): candidate is Extract<ExplorerNode, { kind: "root" }> => candidate.kind === "root");
+    if (!root) return undefined;
+    return this.tree.getChildren(root).find(
+      (candidate): candidate is Extract<ExplorerNode, { kind: "subscription" }> =>
+        candidate.kind === "subscription" && candidate.subscription.id.toLowerCase() === subscriptionId.toLowerCase(),
+    );
   }
 
   private async openSshConfig(): Promise<void> {
