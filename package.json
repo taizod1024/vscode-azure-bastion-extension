@@ -160,11 +160,6 @@
       ],
       "view/title": [
         {
-          "command": "azure-bastion.refreshResources",
-          "when": "view == azureBastion.resources",
-          "group": "navigation@2"
-        },
-        {
           "command": "azure-bastion.openSshConfig",
           "when": "view == azureBastion.resources",
           "group": "navigation@1"
@@ -198,7 +193,7 @@
         },
         {
           "command": "azure-bastion.refreshNode",
-          "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionRoot || viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
           "group": "inline@6"
         },
         {
@@ -238,7 +233,7 @@
         },
         {
           "command": "azure-bastion.refreshNode",
-          "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionRoot || viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
           "group": "2_resource@4"
         }
       ]
