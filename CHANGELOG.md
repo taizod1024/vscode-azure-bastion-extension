@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.16](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.15...v0.1.16) (2026-10-19)
+
+
+### Features
+
+* Azure Bastion resource view updates for improved VM state handling and error reporting ([44c688a](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/44c688a0a443c2426fcf706f4c3ecaa2f561a293))
+
 ### [0.1.15](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.14...v0.1.15) (2026-10-18)
 
 
