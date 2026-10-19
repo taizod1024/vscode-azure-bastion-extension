@@ -786,7 +786,8 @@ export class BastionExplorer {
         const root = this.getSubscriptionNode(node.subscription.id);
         if (!root) return;
         root.refreshing = "busy";
-        this.tree.updateNode(root);
+        this.machines = this.machines.filter(machine => machine.vm.subscriptionId.toLowerCase() !== root.subscription.id.toLowerCase());
+        this.tree.updateChildren(root, []);
         let refreshed: Awaited<ReturnType<AzureResources["discoverSubscription"]>>;
         try {
           refreshed = await this.resources.discoverSubscription(node.subscription.id);
@@ -802,10 +803,7 @@ export class BastionExplorer {
         root.subscription = refreshed.subscription;
         root.refreshing = undefined;
         this.tree.updateNode(root);
-        this.machines = [
-          ...this.machines.filter(machine => machine.vm.subscriptionId.toLowerCase() !== root.subscription.id.toLowerCase()),
-          ...refreshed.machines,
-        ];
+        this.machines = [...this.machines, ...refreshed.machines];
         this.tree.updateChildren(root, this.childrenForSubscription(root.subscription.id, this.machines));
         this.log.appendLine(`Subscription ${root.subscription.name} refreshed: ${refreshed.machines.length} Bastion-reachable VM(s).`);
         return;
@@ -818,9 +816,19 @@ export class BastionExplorer {
         const index = siblings.findIndex(child => child.kind === "vm" && child.vm.id.toLowerCase() === node.vm.id.toLowerCase());
         const current = siblings[index];
         if (current?.kind !== "vm") return;
-        siblings[index] = { ...current, refreshing };
+        const vm = refreshing === "busy"
+          ? { ...current.vm, powerState: undefined, powerStateFetchFailed: undefined }
+          : current.vm;
+        siblings[index] = { ...current, vm, refreshing };
         this.tree.updateChildren(root, siblings);
         this.tree.updateNode(siblings[index]);
+        if (refreshing === "busy") {
+          this.machines = this.machines.map(machine =>
+            machine.vm.id.toLowerCase() === vm.id.toLowerCase()
+              ? { ...machine, vm }
+              : machine,
+          );
+        }
       };
       setRefreshing("busy");
       let powerState: Awaited<ReturnType<AzureResources["refreshVmPowerState"]>>;
