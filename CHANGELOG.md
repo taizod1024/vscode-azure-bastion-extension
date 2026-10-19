@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.18](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.17...v0.1.18) (2026-10-19)
+
+
+### Features
+
+* リフレッシュ中のノードに「Refreshing...」の説明を追加し、ユーザー体験を向上 ([9708f6f](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/9708f6f27ae426637736773d05c90937603c22ad))
+
 ### [0.1.17](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.16...v0.1.17) (2026-10-19)
 
 
