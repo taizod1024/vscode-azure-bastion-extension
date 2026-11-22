@@ -6,7 +6,7 @@ A VS Code extension for Azure Bastion
 
 ## Features
 
-- Easily create connections through Azure Bastion directly from VS Code (Tunnel, SSH, RDP)
+- Easily create connections through Azure Bastion directly from VS Code (Tunnel, Tunnel + Remote-SSH, SSH, RDP)
 - Browse Azure subscriptions and Bastion-reachable virtual machines, including their current power state, in the Azure Bastion sidebar
 - Refresh resources and VM power states, and select a Bastion when more than one can reach a VM
 - View resource properties as JSON and open subscriptions or VMs in the built-in or external browser from the context menu
@@ -29,6 +29,7 @@ A VS Code extension for Azure Bastion
    1. Open VS Code
    2. Install the Azure Bastion extension from the extensions marketplace
 3. The **Azure Resources** extension (`ms-azuretools.vscode-azureresourcegroups`) is a required dependency of Azure Bastion and is managed by VS Code. Sign in to Azure from its Resources view or from the Azure Bastion view.
+4. Install the **Remote - SSH** extension (`ms-vscode-remote.remote-ssh`) to use the combined Tunnel + Remote-SSH action.
 
 ## Azure Bastion sidebar
 
@@ -37,7 +38,7 @@ A VS Code extension for Azure Bastion
 3. The view has one **Azure Bastion** root node containing subscriptions and virtual machines that share a virtual network with a Bastion host or are connected through a directly connected VNet peering. VM names are sorted alphabetically within each subscription.
    Each VM shows its power state (for example, `running` or `deallocated`) next to its name.
 4. Use the **Refresh** action on the **Azure Bastion** root node to reload all resources. Its children are cleared while loading. A subscription's **Refresh** action immediately clears its VM children, then reloads them; a VM's **Refresh** action clears its displayed power state and reloads that state. The node being refreshed shows **Refreshing...** in its description and an animated spinner. A failed resource fetch is marked with a red error icon; previously displayed data is not restored.
-5. Hover over a VM to reveal inline Tunnel, SSH, RDP (Windows only), built-in browser, external browser, and refresh icons. You can also right-click a VM to access these actions. If more than one Bastion can reach that VM, select a Bastion; a single candidate is used automatically. Subscriptions also have inline built-in browser, external browser, and refresh icons.
+5. Hover over a VM to reveal inline Tunnel, Tunnel + Remote-SSH, SSH, RDP (Windows only), built-in browser, external browser, and refresh icons. The combined Tunnel + Remote-SSH icon appears between Tunnel and SSH. You can also right-click a VM to access these actions. If more than one Bastion can reach that VM, select a Bastion; a single candidate is used automatically. Subscriptions also have inline built-in browser, external browser, and refresh icons.
 6. Use **Configure VM** in the VM context menu to set its SSH username and tunnel ports. When connecting, missing SSH usernames and tunnel ports can also be entered and saved.
 7. Saved VM settings are synced to `~/.ssh/config` as a managed block (`# azure-bastion:start` to `# azure-bastion:end`) with `Host <VM name>`, `HostName localhost`, `Port <local port>`, and `User <username>`. Use the **Open SSH Config** button at the top of the view to review it. The extension storage is the source of truth: edit VM settings with **Configure VM**, not inside the block, because changes in the block are overwritten. Content outside the block is never modified.
 8. Use **View Properties** to open the resource's JSON from Azure Resource Manager. The JSON is opened from a temporary file and is removed when the document is closed, avoiding an unsaved-document prompt. **Open in Portal** opens the resource in VS Code's built-in browser, and **Open in Portal with External Browser** opens it in your default browser. Both portal actions are available on subscriptions and VMs.
@@ -53,5 +54,6 @@ Resource discovery requires permission to read subscriptions, virtual machines a
 Right-click a VM in the Azure Bastion view and choose the required connection type:
 
 - **Tunnel**: Enter a remote port and local listening port when prompted. The local port can be used in `~/.ssh/config` for SSH clients.
+- **Tunnel + Remote-SSH**: Enter the VM's SSH username and tunnel ports if they have not been saved yet. The extension starts the Bastion tunnel, waits up to 60 seconds for the local port, then opens a new VS Code window connected to the VM using Remote - SSH and the managed SSH config entry. The Remote - SSH extension must be installed.
 - **SSH**: Enter the VM's SSH username when it has not been saved yet. Azure CLI handles password authentication.
 - **RDP**: Azure CLI opens the RDP setup flow.

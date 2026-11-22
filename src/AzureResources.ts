@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { execFile } from "child_process";
+import * as net from "net";
 import * as https from "https";
 import * as fs from "fs";
 import * as os from "os";
@@ -86,12 +87,18 @@ function isWindowsVm(vm: VirtualMachine): boolean {
   return /^Windows$/i.test(vm.osType || "");
 }
 
+function isValidPort(port: number | undefined): port is number {
+  return port !== undefined && Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
 const stateKey = "azure-bastion.sidebar.v1";
 const sshBlockStart = "# azure-bastion:start (managed by the Azure Bastion extension; edits in this block are overwritten)";
 const sshBlockEnd = "# azure-bastion:end";
 const migrationKey = "azure-bastion.sidebar.migrated.v1";
 const azureResourcesExtensionId = "ms-azuretools.vscode-azureresourcegroups";
+const remoteSshExtensionId = "ms-vscode-remote.remote-ssh";
 const microsoftScopes = ["https://management.azure.com/user_impersonation"];
+const tunnelReadyTimeoutMs = 60_000;
 
 class BastionTreeProvider implements vscode.TreeDataProvider<ExplorerNode> {
   private readonly changed = new vscode.EventEmitter<ExplorerNode | undefined | null | void>();
@@ -302,6 +309,13 @@ class AzureResources {
 
   private resourceGroupFromId(id: string): string {
     return id.match(/\/resourceGroups\/([^/]+)/i)?.[1] || "";
+  }
+
+  private sshHostNameForId(id: string, ids: string[]): string {
+    const name = id.split("/").pop() || id;
+    return ids.filter(candidate => (candidate.split("/").pop() || candidate) === name).length > 1
+      ? `${name}-${this.resourceGroupFromId(id)}`
+      : name;
   }
 
   private subscriptionFromId(id: string): string {
@@ -583,18 +597,26 @@ class AzureResources {
     await this.syncSshConfig();
   }
 
+  async sshHostNameFor(vmId: string): Promise<string> {
+    const state = await this.getState();
+    const entries = Object.entries(state.vmSettings).filter(([, settings]) => settings.localPort);
+    const matchingId = entries.find(([id]) => id.toLowerCase() === vmId.toLowerCase())?.[0];
+    if (!matchingId) throw new Error(`No saved tunnel port is available for ${vmId}.`);
+    return this.sshHostNameForId(matchingId, entries.map(([id]) => id));
+  }
+
   get sshConfigPath(): string {
     return path.join(os.homedir(), ".ssh", "config");
   }
 
   /** write the managed Host block of ~/.ssh/config from the saved VM settings */
-  async syncSshConfig(): Promise<void> {
+  async syncSshConfig(): Promise<boolean> {
     try {
       const state = await this.getState();
       const entries = Object.entries(state.vmSettings).filter(([, settings]) => settings.localPort);
-      const names = entries.map(([id]) => id.split("/").pop() || id);
-      const lines = entries.flatMap(([id, settings], index) => {
-        const name = names.filter(candidate => candidate === names[index]).length > 1 ? `${names[index]}-${this.resourceGroupFromId(id)}` : names[index];
+      const ids = entries.map(([id]) => id);
+      const lines = entries.flatMap(([id, settings]) => {
+        const name = this.sshHostNameForId(id, ids);
         return [`Host ${name}`, "  HostName localhost", `  Port ${settings.localPort}`, ...(settings.username && /^[\w.@-]+$/.test(settings.username) ? [`  User ${settings.username}`] : []), `  HostKeyAlias ${name}`];
       });
       const block = lines.length > 0 ? `${sshBlockStart}\n${lines.join("\n")}\n${sshBlockEnd}\n` : "";
@@ -603,12 +625,14 @@ class AzureResources {
       let next: string;
       if (pattern.test(existing)) next = existing.replace(pattern, () => block);
       else if (block) next = existing + (existing && !existing.endsWith("\n") ? "\n" : "") + (existing ? "\n" : "") + block;
-      else return;
-      if (next === existing) return;
+      else return true;
+      if (next === existing) return true;
       fs.mkdirSync(path.dirname(this.sshConfigPath), { recursive: true });
       fs.writeFileSync(this.sshConfigPath, next, "utf8");
+      return true;
     } catch (error) {
       this.log.appendLine(`ERROR: Could not update ${this.sshConfigPath}: ${error}`);
+      return false;
     }
   }
 
@@ -685,6 +709,7 @@ export class BastionExplorer {
       vscode.commands.registerCommand("azure-bastion.refreshNode", async (node?: ExplorerNode) => this.refreshNode(node)),
       vscode.commands.registerCommand("azure-bastion.signIn", async () => this.signIn()),
       vscode.commands.registerCommand("azure-bastion.connectVmTunnel", async (vm?: string | ExplorerNode) => this.connectVm(vm, "tunnel")),
+      vscode.commands.registerCommand("azure-bastion.connectVmTunnelHost", async (vm?: string | ExplorerNode) => this.connectVm(vm, "tunnel", true)),
       vscode.commands.registerCommand("azure-bastion.connectVmSsh", async (vm?: string | ExplorerNode) => this.connectVm(vm, "ssh")),
       vscode.commands.registerCommand("azure-bastion.connectVmRdp", async (vm?: string | ExplorerNode) => this.connectVm(vm, "rdp")),
       vscode.commands.registerCommand("azure-bastion.configureVm", async (vm?: string | ExplorerNode) => this.configureVm(vm)),
@@ -996,17 +1021,24 @@ export class BastionExplorer {
     void vscode.window.showInformationMessage(`Saved connection settings for ${machine.vm.name}.`);
   }
 
-  private async connectVm(vm: string | ExplorerNode | undefined, mode: ConnectionMode): Promise<void> {
+  private async connectVm(vm: string | ExplorerNode | undefined, mode: ConnectionMode, connectToHost = false): Promise<void> {
+    if (connectToHost && !vscode.extensions.getExtension(remoteSshExtensionId)) {
+      void vscode.window.showErrorMessage("Install the Remote - SSH extension to connect to a VM through VS Code.");
+      return;
+    }
     const machine = this.getMachine(vm);
     if (!machine) {
       void vscode.window.showErrorMessage("Refresh the Azure Bastion list and select a VM.");
       return;
     }
     let settings = (await this.resources.getState()).vmSettings[machine.vm.id.toLowerCase()] || {};
-    if (mode === "ssh" && !settings.username) {
+    if ((mode === "ssh" || connectToHost) && !settings.username) {
       const username = await vscode.window.showInputBox({
         title: `SSH username for ${machine.vm.name}`,
         prompt: "This username will be saved for this VM. The password is not stored.",
+        validateInput: connectToHost
+          ? value => (/^[\w.@-]+$/.test(value.trim()) ? undefined : "Enter a valid SSH username.")
+          : undefined,
         ignoreFocusOut: true,
       });
       if (username === undefined) return;
@@ -1017,7 +1049,7 @@ export class BastionExplorer {
         return;
       }
     }
-    if (mode === "tunnel" && (!settings.remotePort || !settings.localPort)) {
+    if ((mode === "tunnel" || connectToHost) && (!isValidPort(settings.remotePort) || !isValidPort(settings.localPort))) {
       const remotePortText = await vscode.window.showInputBox({
         title: `Tunnel remote port for ${machine.vm.name}`,
         value: settings.remotePort?.toString() || "22",
@@ -1046,13 +1078,91 @@ export class BastionExplorer {
       if (!selected) return;
       bastion = machine.bastions[selected.index];
     }
-    await this.launchConnection(machine.vm, bastion, mode, settings);
+    if (!connectToHost) {
+      await this.launchConnection(machine.vm, bastion, mode, settings);
+      return;
+    }
+    if (!/^[\w.@-]+$/.test(settings.username || "") || !isValidPort(settings.localPort) || !isValidPort(settings.remotePort)) {
+      void vscode.window.showErrorMessage("A valid SSH username and tunnel ports are required.");
+      return;
+    }
+    if (!(await this.resources.syncSshConfig())) {
+      void vscode.window.showErrorMessage(`Could not update ${this.resources.sshConfigPath}; Remote-SSH was not started.`);
+      return;
+    }
+    let sshHost: string;
+    try {
+      sshHost = await this.resources.sshHostNameFor(machine.vm.id);
+    } catch (error) {
+      this.log.appendLine(`ERROR: Could not resolve SSH host for ${machine.vm.name}: ${error}`);
+      void vscode.window.showErrorMessage(`Could not prepare the SSH host for ${machine.vm.name}: ${error}`);
+      return;
+    }
+    if (await this.isLocalPortInUse(settings.localPort)) {
+      void vscode.window.showErrorMessage(`Local port ${settings.localPort} is already in use. Configure another tunnel port and try again.`);
+      return;
+    }
+    if (!(await this.launchConnection(machine.vm, bastion, "tunnel", settings))) return;
+    const tunnelReady = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `Waiting for the Azure Bastion tunnel to ${machine.vm.name}...`, cancellable: false },
+      () => this.waitForLocalPort(settings.localPort),
+    );
+    if (!tunnelReady) {
+      const message = `The Azure Bastion tunnel to ${machine.vm.name} did not become ready within 60 seconds.`;
+      this.log.appendLine(`ERROR: ${message}`);
+      void vscode.window.showErrorMessage(message);
+      return;
+    }
+    try {
+      const remoteUri = vscode.Uri.parse(`vscode-remote://ssh-remote+${encodeURIComponent(sshHost)}/`);
+      await vscode.commands.executeCommand("vscode.openFolder", remoteUri, { forceNewWindow: true });
+      this.log.appendLine(`Opened a new Remote-SSH window for ${machine.vm.name} through ${bastion.name}.`);
+    } catch (error) {
+      this.log.appendLine(`ERROR: Could not open Remote-SSH for ${machine.vm.name}: ${error}`);
+      void vscode.window.showErrorMessage(`Could not open Remote-SSH for ${machine.vm.name}: ${error}`);
+    }
   }
 
-  private async launchConnection(vm: VirtualMachine, bastion: BastionHost, mode: ConnectionMode, settings: VmSettings): Promise<void> {
+  private async isLocalPortInUse(port: number): Promise<boolean> {
+    return await new Promise<boolean>(resolve => {
+      const server = net.createServer();
+      server.once("error", () => resolve(true));
+      server.listen(port, "127.0.0.1", () => {
+        server.close(() => resolve(false));
+      });
+    });
+  }
+
+  private async waitForLocalPort(port: number): Promise<boolean> {
+    const deadline = Date.now() + tunnelReadyTimeoutMs;
+    while (Date.now() < deadline) {
+      const remainingMs = deadline - Date.now();
+      const ready = await new Promise<boolean>(resolve => {
+        const socket = net.createConnection({ host: "127.0.0.1", port });
+        socket.setTimeout(Math.min(1000, remainingMs));
+        socket.once("connect", () => {
+          socket.destroy();
+          resolve(true);
+        });
+        socket.once("timeout", () => {
+          socket.destroy();
+          resolve(false);
+        });
+        socket.once("error", () => {
+          socket.destroy();
+          resolve(false);
+        });
+      });
+      if (ready) return true;
+      await new Promise(resolve => setTimeout(resolve, Math.min(500, Math.max(0, deadline - Date.now()))));
+    }
+    return false;
+  }
+
+  private async launchConnection(vm: VirtualMachine, bastion: BastionHost, mode: ConnectionMode, settings: VmSettings): Promise<boolean> {
     if (!process.env.WINDIR) {
       void vscode.window.showErrorMessage("Azure Bastion connections currently require Windows.");
-      return;
+      return false;
     }
     const scriptPath = path.join(this.context.extensionPath, "bin", "Invoke-AZNetwork.ps1");
     const parameters: Array<[string, string]> = [
@@ -1071,13 +1181,17 @@ export class BastionExplorer {
     const script = `& ${quote(scriptPath)} ${parameters.map(([name, value]) => `-${name} ${quote(value)}`).join(" ")}`;
     const encodedScript = Buffer.from(script, "utf16le").toString("base64");
     const launcher = `Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile -ExecutionPolicy RemoteSigned -EncodedCommand ${encodedScript}'`;
-    execFile("powershell.exe", ["-NoProfile", "-Command", launcher], { windowsHide: true }, error => {
-      if (error) {
-        this.log.appendLine(`ERROR: Could not launch Azure Bastion connection: ${error}`);
-        void vscode.window.showErrorMessage(`Could not launch Azure Bastion connection: ${error.message}`);
-        return;
-      }
-      this.log.appendLine(`Started ${mode} connection to ${vm.name} through ${bastion.name}.`);
+    return await new Promise<boolean>(resolve => {
+      execFile("powershell.exe", ["-NoProfile", "-Command", launcher], { windowsHide: true }, error => {
+        if (error) {
+          this.log.appendLine(`ERROR: Could not launch Azure Bastion connection: ${error}`);
+          void vscode.window.showErrorMessage(`Could not launch Azure Bastion connection: ${error.message}`);
+          resolve(false);
+          return;
+        }
+        this.log.appendLine(`Started ${mode} connection to ${vm.name} through ${bastion.name}.`);
+        resolve(true);
+      });
     });
   }
 }
