@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.21](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.20...v0.1.21) (2026-11-22)
+
+
+### Features
+
+* Tunnel + Remote-SSH接続オプションを追加し、SSH設定の同期処理を改善 ([dc54fc5](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/dc54fc5ae34fdf66d2ba1a663c982db504be35c8))
+* 不要なAzure Bastion画像ファイルを削除し、リポジトリをクリーンアップ ([767e6ff](https://github.com/taizod1024/vscode-azure-bastion-extension/commit/767e6ff8ed6db586155d75a5e5839c9b753858c4))
+
 ### [0.1.20](https://github.com/taizod1024/vscode-azure-bastion-extension/compare/v0.1.19...v0.1.20) (2026-10-19)
 
 
