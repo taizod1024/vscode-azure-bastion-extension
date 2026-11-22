@@ -1114,9 +1114,31 @@ export class BastionExplorer {
       return;
     }
     try {
-      const remoteUri = vscode.Uri.parse(`vscode-remote://ssh-remote+${encodeURIComponent(sshHost)}/`);
-      await vscode.commands.executeCommand("vscode.openFolder", remoteUri, { forceNewWindow: true });
-      this.log.appendLine(`Opened a new Remote-SSH window for ${machine.vm.name} through ${bastion.name}.`);
+      const rootUri = vscode.Uri.parse(`vscode-remote://ssh-remote+${encodeURIComponent(sshHost)}/`);
+      const recent = await vscode.commands.executeCommand<{
+        workspaces?: Array<{
+          remoteAuthority?: string;
+          folderUri?: { path?: string };
+          workspace?: { configPath?: { path?: string } };
+        }>;
+      }>("_workbench.getRecentlyOpened");
+      const recentPath = recent?.workspaces?.find(entry => {
+        if (entry.remoteAuthority?.toLowerCase() !== rootUri.authority.toLowerCase()) return false;
+        const candidatePath = entry.folderUri?.path || entry.workspace?.configPath?.path;
+        return !!candidatePath &&
+          candidatePath.startsWith("/") &&
+          candidatePath !== "/" &&
+          !candidatePath.toLowerCase().endsWith(".code-workspace");
+      });
+      const folderPath = recentPath?.folderUri?.path || recentPath?.workspace?.configPath?.path;
+      if (folderPath) {
+        const remoteUri = rootUri.with({ path: folderPath.replace(/\/+$/, "") || "/" });
+        await vscode.commands.executeCommand("vscode.openFolder", remoteUri, { forceNewWindow: true });
+        this.log.appendLine(`Opened a new Remote-SSH window for ${machine.vm.name} through ${bastion.name} at ${remoteUri.path} using VS Code recent history.`);
+      } else {
+        await vscode.commands.executeCommand("vscode.newWindow", { remoteAuthority: rootUri.authority });
+        this.log.appendLine(`Opened an empty Remote-SSH window for ${machine.vm.name} through ${bastion.name}; no recent folder was found.`);
+      }
     } catch (error) {
       this.log.appendLine(`ERROR: Could not open Remote-SSH for ${machine.vm.name}: ${error}`);
       void vscode.window.showErrorMessage(`Could not open Remote-SSH for ${machine.vm.name}: ${error}`);

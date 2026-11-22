@@ -54,6 +54,6 @@ Resource discovery requires permission to read subscriptions, virtual machines a
 Right-click a VM in the Azure Bastion view and choose the required connection type:
 
 - **Tunnel**: Enter a remote port and local listening port when prompted. The local port can be used in `~/.ssh/config` for SSH clients.
-- **Tunnel + Remote-SSH**: Enter the VM's SSH username and tunnel ports if they have not been saved yet. The extension starts the Bastion tunnel, waits up to 60 seconds for the local port, then opens a new VS Code window connected to the VM using Remote - SSH and the managed SSH config entry. The Remote - SSH extension must be installed.
+- **Tunnel + Remote-SSH**: Enter the VM's SSH username and tunnel ports if they have not been saved yet. The extension starts the Bastion tunnel, waits up to 60 seconds for the local port, then opens a new VS Code window connected to the VM using Remote - SSH and the managed SSH config entry. It opens the newest non-root folder for that SSH host from VS Code's recent history. If the host has no recent folder, it opens an empty Remote-SSH window. The Remote - SSH extension must be installed.
 - **SSH**: Enter the VM's SSH username when it has not been saved yet. Azure CLI handles password authentication.
 - **RDP**: Azure CLI opens the RDP setup flow.
