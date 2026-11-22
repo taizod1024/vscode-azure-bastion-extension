@@ -51,6 +51,11 @@
         "icon": "$(debug-disconnect)"
       },
       {
+        "command": "azure-bastion.connectVmTunnelHost",
+        "title": "Connect via Tunnel and Remote-SSH",
+        "icon": "$(remote)"
+      },
+      {
         "command": "azure-bastion.connectVmSsh",
         "title": "Connect via SSH",
         "icon": "$(terminal)"
@@ -129,6 +134,10 @@
           "when": "false"
         },
         {
+          "command": "azure-bastion.connectVmTunnelHost",
+          "when": "false"
+        },
+        {
           "command": "azure-bastion.connectVmSsh",
           "when": "false"
         },
@@ -175,29 +184,34 @@
           "group": "inline@1"
         },
         {
-          "command": "azure-bastion.connectVmSsh",
+          "command": "azure-bastion.connectVmTunnelHost",
           "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
           "group": "inline@2"
         },
         {
+          "command": "azure-bastion.connectVmSsh",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "inline@3"
+        },
+        {
           "command": "azure-bastion.connectVmRdp",
           "when": "view == azureBastion.resources && viewItem == azureBastionVmWindows",
-          "group": "inline@3"
+          "group": "inline@4"
         },
         {
           "command": "azure-bastion.openInPortal",
           "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
-          "group": "inline@4"
+          "group": "inline@5"
         },
         {
           "command": "azure-bastion.openInPortalExternal",
           "when": "view == azureBastion.resources && (viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
-          "group": "inline@5"
+          "group": "inline@6"
         },
         {
           "command": "azure-bastion.refreshNode",
           "when": "view == azureBastion.resources && (viewItem == azureBastionRoot || viewItem == azureBastionSubscription || viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
-          "group": "inline@6"
+          "group": "inline@7"
         },
         {
           "command": "azure-bastion.connectVmTunnel",
@@ -205,14 +219,19 @@
           "group": "0_connect@1"
         },
         {
-          "command": "azure-bastion.connectVmSsh",
+          "command": "azure-bastion.connectVmTunnelHost",
           "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
           "group": "0_connect@2"
         },
         {
+          "command": "azure-bastion.connectVmSsh",
+          "when": "view == azureBastion.resources && (viewItem == azureBastionVmWindows || viewItem == azureBastionVmOther)",
+          "group": "0_connect@3"
+        },
+        {
           "command": "azure-bastion.connectVmRdp",
           "when": "view == azureBastion.resources && viewItem == azureBastionVmWindows",
-          "group": "0_connect@3"
+          "group": "0_connect@4"
         },
         {
           "command": "azure-bastion.configureVm",
